@@ -2,370 +2,207 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#f7f7f5">
-<title>Apple Schemes — Premium</title>
-
-<style>
-:root{
-  --bg:#f7f7f5;
-  --white:#fff;
-  --black:#171717;
-  --gray:#858585;
-  --accent:#a78bfa;
-  --line:#eaeaea;
-  --radius:22px;
-}
-*{box-sizing:border-box}
-body{
-  margin:0;
-  background:var(--bg);
-  color:var(--black);
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-}
-button,select{font:inherit}
-button{cursor:pointer}
-header{
-  height:65px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:0 6%;
-  background:rgba(255,255,255,.9);
-  border-bottom:1px solid var(--line);
-  position:sticky;
-  top:0;
-  z-index:10;
-  backdrop-filter:blur(15px);
-}
-.logo{
-  font-size:20px;
-  font-weight:800;
-  letter-spacing:-1px;
-}
-.logo span{color:#999}
-.header-right{display:flex;gap:9px}
-.header-right button{
-  border:0;
-  background:#f1f1ef;
-  border-radius:30px;
-  padding:9px 13px;
-  font-size:12px;
-}
-main{max-width:1100px;margin:auto;padding:24px 20px}
-.hero{
-  min-height:340px;
-  background:linear-gradient(125deg,#19191d,#34343b 65%,#514a62);
-  border-radius:30px;
-  color:white;
-  padding:48px;
-  display:flex;
-  align-items:center;
-  position:relative;
-  overflow:hidden;
-}
-.hero-content{position:relative;z-index:2;max-width:470px}
-.eyebrow{
-  font-size:11px;
-  letter-spacing:3px;
-  text-transform:uppercase;
-  color:#c4b5fd;
-}
-.hero h1{
-  font-size:clamp(38px,7vw,65px);
-  line-height:.99;
-  letter-spacing:-3px;
-  margin:20px 0;
-}
-.hero p{color:#c8c8cf;line-height:1.7;font-size:15px}
-.hero button{
-  margin-top:18px;
-  padding:15px 23px;
-  border:0;
-  border-radius:30px;
-  background:white;
-  font-weight:700;
-}
-.hero-decoration{
-  position:absolute;
-  right:7%;
-  top:50%;
-  transform:translateY(-50%);
-  font-size:clamp(100px,20vw,210px);
-  opacity:.18;
-  filter:grayscale(1);
-}
-.benefits{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:13px;
-  margin:22px 0 42px;
-}
-.benefit{
-  background:white;
-  padding:19px;
-  border-radius:17px;
-  font-size:13px;
-  color:#777;
-}
-.benefit b{display:block;color:#222;margin-bottom:6px;font-size:14px}
-.section-heading{
-  display:flex;
-  align-items:end;
-  justify-content:space-between;
-  margin:35px 0 17px;
-}
-.section-heading h2{
-  font-size:29px;
-  letter-spacing:-1.2px;
-  margin:0;
-}
-.section-heading p{font-size:12px;color:#999;margin:0}
-#categoryMenu{
-  display:flex;
-  gap:9px;
-  overflow-x:auto;
-  padding:3px 0 15px;
-  scrollbar-width:none;
-}
-.category-button{
-  flex-shrink:0;
-  padding:11px 18px;
-  border:1px solid #e6e6e6;
-  border-radius:30px;
-  background:white;
-  font-size:13px;
-  color:#555;
-}
-.category-button.active{
-  background:#191919;
-  color:white;
-  border-color:#191919;
-}
-#productList{
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:17px;
-}
-.store-card{
-  background:white;
-  border-radius:22px;
-  padding:15px;
-  transition:transform .2s,box-shadow .2s;
-  min-width:0;
-}
-.store-card:hover{
-  transform:translateY(-4px);
-  box-shadow:0 12px 30px #0000000b;
-}
-.store-photo{
-  height:190px;
-  border-radius:16px;
-  background:linear-gradient(145deg,#f8f8f8,#ededed);
-  display:grid;
-  place-items:center;
-  overflow:hidden;
-  font-size:75px;
-  color:#aaa;
-}
-.store-photo img{
-  width:100%;
-  height:100%;
-  object-fit:contain;
-  mix-blend-mode:multiply;
-}
-.store-card h3{
-  font-size:17px;
-  letter-spacing:-.4px;
-  margin:17px 0 7px;
-}
-.store-card p{font-size:12px;color:#999;min-height:28px}
-.store-price{font-size:17px;font-weight:750;margin:15px 0}
-.store-card button{
-  width:100%;
-  padding:13px;
-  border:0;
-  border-radius:13px;
-  background:#191919;
-  color:white;
-  font-weight:650;
-}
-.info{
-  margin-top:40px;
-  padding:30px;
-  background:#ece9e4;
-  border-radius:23px;
-}
-.info h2{font-size:25px;letter-spacing:-1px}
-.info p{font-size:14px;color:#777;line-height:1.7}
-footer{
-  text-align:center;
-  padding:35px 15px;
-  font-size:12px;
-  color:#999;
-}
-.hidden{display:none!important}
-#productModal{
-  position:fixed;
-  inset:0;
-  z-index:30;
-  background:#0008;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:15px;
-  backdrop-filter:blur(5px);
-}
-.modal-content{
-  width:100%;
-  max-width:440px;
-  max-height:90vh;
-  overflow:auto;
-  background:white;
-  border-radius:25px;
-  padding:25px;
-}
-.modal-top{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-.modal-top h2{font-size:24px;letter-spacing:-1px}
-.close{
-  width:35px;height:35px;
-  border:0;border-radius:50%;
-  background:#eee;font-size:20px;
-}
-.modal-content label{
-  display:block;
-  font-size:12px;
-  font-weight:700;
-  margin:17px 0 7px;
-}
-.modal-content select{
-  width:100%;
-  border:1px solid #e5e5e5;
-  padding:13px;
-  border-radius:12px;
-  background:white;
-}
-#modalPrice{
-  font-size:25px;
-  font-weight:800;
-  margin:24px 0;
-}
-#modalOrder{
-  width:100%;
-  padding:15px;
-  background:#171717;
-  color:white;
-  border:0;
-  border-radius:13px;
-  font-weight:700;
-}
-#modalOrder:disabled{opacity:.4}
-@media(max-width:700px){
-  main{padding:16px 13px}
-  .hero{padding:30px 23px;min-height:320px}
-  .hero-decoration{right:-10px;opacity:.12}
-  .benefits{gap:8px}
-  .benefit{padding:13px 9px;font-size:11px}
-  .benefit b{font-size:12px}
-  #productList{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-  .store-card{padding:10px;border-radius:17px}
-  .store-photo{height:140px}
-  .store-card h3{font-size:14px}
-  .store-card button{font-size:12px;padding:12px 5px}
-  .section-heading h2{font-size:25px}
-}
-@media(max-width:360px){
-  .store-photo{height:115px}
-  .hero h1{font-size:37px}
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f8f8f6">
+  <meta name="description" content="Apple Schemes — премиальная техника Apple. Выбирай устройство и конфигурацию.">
+  <title>Apple Schemes — Premium Technology</title>
+  <link rel="stylesheet" href="./style.css">
 </head>
 
 <body>
 
-<header>
-  <div class="logo">APPLE<span> STORE.</span></div>
-  <div class="header-right">
-    <button onclick="document.getElementById('catalog').scrollIntoView({behavior:'smooth'})">Каталог ↓</button>
-    <button onclick="window.open('https://t.me/burya_24','_blank')">Связаться ↗</button>
-  </div>
+<header class="header">
+  <a href="#" class="logo">APPLE <span>SCHEMES.</span></a>
+
+  <nav class="header-nav">
+    <a href="#catalog">Каталог</a>
+    <a href="#about">О магазине</a>
+  </nav>
+
+  <a class="header-contact" href="https://t.me/burya_24" target="_blank">
+    Менеджер <span>↗</span>
+  </a>
 </header>
 
 <main>
+
   <section class="hero">
     <div class="hero-content">
-      <div class="eyebrow">Apple Premium Collection</div>
-      <h1>Технологии.<br>Твой стиль.</h1>
-      <p>Время обновиться без удара по кошельку!</p>
-      <button onclick="document.getElementById('catalog').scrollIntoView({behavior:'smooth'})">
-        Открыть каталог →
-      </button>
+      <div class="hero-label">
+        <span class="status-dot"></span>
+        APPLE COLLECTION · PREMIUM
+      </div>
+
+      <h1>
+        Технологии.<br>
+        <span>Твой стиль.</span>
+      </h1>
+
+      <p>
+        Выбирай устройства Apple, находи свою конфигурацию
+        и открывай новые возможности.
+      </p>
+
+      <a href="#catalog" class="hero-button">
+        Смотреть каталог <span>↗</span>
+      </a>
+
+      <div class="hero-caption">
+        DESIGNED FOR YOUR EVERYDAY LIFE
+      </div>
     </div>
-    <div class="hero-decoration"></div>
+
+    <div class="hero-art">
+      <div class="hero-circle"></div>
+      <div class="hero-orbit"></div>
+      <div class="hero-mark"></div>
+      <div class="hero-art-caption">
+        APPLE<br>SCHEMES
+      </div>
+    </div>
+
+    <div class="hero-number">01 / 04</div>
   </section>
 
-  <div class="benefits">
-    <div class="benefit"><b>01 · Выбор</b>Подбор конфигурации</div>
-    <div class="benefit"><b>02 · Консультация</b>Личная связь с менеджером</div>
-    <div class="benefit"><b>03 · Заказ</b>Оформление заявки</div>
-  </div>
-
-  <section id="catalog">
-    <div class="section-heading">
+  <section class="benefits">
+    <div class="benefit">
+      <span class="benefit-number">01</span>
       <div>
-        <p>APPLE COLLECTION</p>
-        <h2>Каталог</h2>
+        <b>Твой выбор</b>
+        <p>Подбор подходящей конфигурации</p>
       </div>
-      <p>Выбирай своё устройство</p>
+    </div>
+
+    <div class="benefit">
+      <span class="benefit-number">02</span>
+      <div>
+        <b>Личный подход</b>
+        <p>Помощь менеджера при выборе</p>
+      </div>
+    </div>
+
+    <div class="benefit">
+      <span class="benefit-number">03</span>
+      <div>
+        <b>Простой заказ</b>
+        <p>Заявка в несколько нажатий</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="catalog" class="catalog-section">
+
+    <div class="section-top">
+      <div>
+        <div class="section-eyebrow">DISCOVER YOUR DEVICE</div>
+        <h2>Выбирай своё.</h2>
+      </div>
+
+      <div class="section-description">
+        Техника Apple.<br>
+        Разные возможности. Один выбор.
+      </div>
     </div>
 
     <div id="categoryMenu"></div>
+
     <div id="productList">
-      <p>Загружаем каталог...</p>
+      <div class="loading-state">
+        Загружаем коллекцию...
+      </div>
     </div>
+
   </section>
 
-  <section class="info">
-    <p>APPLE STORE · НАША ФИЛОСОФИЯ</p>
-    <h2>Технологии должны быть удобными.</h2>
-    <p>Выбирай устройство, сравнивай конфигурации и отправляй заявку. Менеджер поможет уточнить наличие и детали заказа.</p>
+  <section id="about" class="about-section">
+
+    <div class="about-label">APPLE SCHEMES · ABOUT US</div>
+
+    <div class="about-grid">
+      <h2>
+        Не просто<br>
+        устройство.<br>
+        <span>Твой выбор.</span>
+      </h2>
+
+      <div class="about-text">
+        <p>
+          Мы помогаем подобрать технику Apple
+          под твои задачи, предпочтения и бюджет.
+        </p>
+
+        <p>
+          Выбирай модель, сравнивай конфигурации
+          и оставляй заявку. Наш менеджер поможет
+          с дальнейшими деталями.
+        </p>
+
+        <a href="https://t.me/burya_24" target="_blank">
+          Связаться с нами ↗
+        </a>
+      </div>
+    </div>
+
+    <div class="about-bottom">
+      <span>APPLE SCHEMES</span>
+      <span>TECHNOLOGY · DESIGN · EXPERIENCE</span>
+    </div>
+
   </section>
+
 </main>
 
-<footer>
-  APPLE STORE · Все права защищены
-  <br><br>
-  <a href="https://t.me/burya_24" style="color:inherit">Связаться с менеджером</a>
-  <br><br>
-  <a href="./admin.html" style="color:#aaa">Администратор</a>
+<footer class="footer">
+  <a href="#" class="logo">APPLE <span>SCHEMES.</span></a>
+
+  <div class="footer-right">
+    <a href="https://t.me/burya_24" target="_blank">Telegram ↗</a>
+    <a href="./admin.html">Администратор</a>
+  </div>
+
+  <div class="footer-copy">
+    © 2026 APPLE SCHEMES
+  </div>
 </footer>
 
+<!-- Окно товара -->
 <div id="productModal" class="hidden">
+  <div class="modal-overlay" onclick="closeStoreProduct()"></div>
+
   <div class="modal-content">
+
     <div class="modal-top">
-      <h2 id="modalTitle">Товар</h2>
+      <div>
+        <div class="modal-eyebrow">YOUR CONFIGURATION</div>
+        <h2 id="modalTitle">Товар</h2>
+      </div>
+
       <button class="close" onclick="closeStoreProduct()">×</button>
     </div>
 
-    <label>Память</label>
+    <div class="modal-divider"></div>
+
+    <label for="modalMemory">Память</label>
     <select id="modalMemory"></select>
 
-    <label>Цвет</label>
+    <label for="modalColor">Цвет</label>
     <select id="modalColor"></select>
 
-    <label>Тип SIM</label>
+    <label for="modalSim">Тип SIM</label>
     <select id="modalSim"></select>
 
+    <div class="modal-price-label">СТОИМОСТЬ</div>
     <div id="modalPrice">Цена уточняется</div>
 
     <button id="modalOrder" onclick="submitStoreOrder()">
-      Оставить заявку
+      Оставить заявку <span>↗</span>
     </button>
+
+    <p class="modal-note">
+      Наличие и детали заказа уточнит менеджер.
+    </p>
+
   </div>
 </div>
 
