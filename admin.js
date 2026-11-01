@@ -9,11 +9,15 @@ function notify(message) {
 
 function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, c => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",
-    '"':"&quot;","'":"&#39;"
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
   })[c]);
 }
 
+// Проверка администратора
 async function checkAdmin() {
   const {data:{session}} = await db.auth.getSession();
 
@@ -63,6 +67,7 @@ $("refresh").onclick = async () => {
   notify("Данные обновлены.");
 };
 
+// Категории
 async function loadCategories() {
   const {data,error} = await db
     .from("categories")
@@ -76,7 +81,7 @@ async function loadCategories() {
   }
 
   $("productCategory").innerHTML = data.map(c =>
-    `<option value="${c.id}">${escapeHTML(c.name)}</option>`
+    `<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>`
   ).join("");
 }
 
@@ -98,24 +103,39 @@ $("categoryForm").onsubmit = async e => {
   notify("Категория добавлена.");
 };
 
+// Загрузка фотографии в Supabase Storage
 async function uploadImage(file) {
   if (!file) return null;
 
-  if (!file.type.startsWith("image/")) {
-    throw new Error("Выбери файл изображения.");
+  if (!["image/jpeg","image/png","image/webp","image/gif"].includes(file.type)) {
+    throw new Error("Используй JPG, PNG, WEBP или GIF.");
   }
 
   if (file.size > 5 * 1024 * 1024) {
     throw new Error("Размер фотографии должен быть до 5 МБ.");
   }
 
-  const {data:{user}} = await db.auth.getUser();
-  const extension = file.name.split(".").pop().replace(/[^a-z0-9]/gi,"");
-  const path = user.id + "/" + crypto.randomUUID() + "." + extension;
+  const {data:{user},error:userError} = await db.auth.getUser();
+
+  if (userError || !user) {
+    throw new Error("Не удалось определить пользователя.");
+  }
+
+  const extensions = {
+    "image/jpeg":"jpg",
+    "image/png":"png",
+    "image/webp":"webp",
+    "image/gif":"gif"
+  };
+
+  const path = user.id + "/" + crypto.randomUUID() + "." + extensions[file.type];
 
   const {error} = await db.storage
     .from("product-images")
-    .upload(path,file,{upsert:false});
+    .upload(path,file,{
+      upsert:false,
+      contentType:file.type
+    });
 
   if (error) throw error;
 
@@ -124,6 +144,130 @@ async function uploadImage(file) {
     .getPublicUrl(path).data.publicUrl;
 }
 
+// Получение пути старой фотографии в Storage
+function getStoragePath(imageUrl) {
+  if (!imageUrl) return null;
+
+  try {
+    const url = new URL(imageUrl);
+    const marker = "/storage/v1/object/public/product-images/";
+
+    const index = url.pathname.indexOf(marker);
+
+    if (index === -1) return null;
+
+    return decodeURIComponent(
+      url.pathname.slice(index + marker.length)
+    );
+  } catch {
+    return null;
+  }
+}
+
+// Удаление старой фотографии
+async function deleteOldImage(imageUrl) {
+  const path = getStoragePath(imageUrl);
+
+  if (!path) return;
+
+  const {error} = await db.storage
+    .from("product-images")
+    .remove([path]);
+
+  if (error) {
+    console.warn("Старая фотография не удалена:", error.message);
+  }
+}
+
+// Предпросмотр фотографии в админке
+$("productsList").addEventListener("change", event => {
+  const input = event.target;
+
+  if (!input.matches(".product-image-input")) return;
+
+  const file = input.files[0];
+  if (!file) return;
+
+  const preview = $("preview-" + input.dataset.productId);
+
+  if (!preview) return;
+
+  if (!file.type.startsWith("image/")) {
+    notify("Выбери файл изображения.");
+    input.value = "";
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    notify("Размер фотографии должен быть до 5 МБ.");
+    input.value = "";
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    preview.src = reader.result;
+  };
+
+  reader.readAsDataURL(file);
+});
+
+// Изменение фотографии существующего товара
+async function changeProductImage(productId) {
+  const input = $("edit-image-" + productId);
+  const file = input?.files[0];
+
+  if (!file) {
+    notify("Сначала выбери новую фотографию.");
+    return;
+  }
+
+  const button = $("change-image-" + productId);
+  button.disabled = true;
+  button.textContent = "Загружаем...";
+
+  try {
+    const {data:product,error:findError} = await db
+      .from("products")
+      .select("id,image_url")
+      .eq("id",productId)
+      .single();
+
+    if (findError) throw findError;
+
+    const oldImage = product.image_url;
+
+    // Загружаем новое изображение
+    const newImage = await uploadImage(file);
+
+    // Сохраняем новую ссылку в базе
+    const {error:updateError} = await db
+      .from("products")
+      .update({image_url:newImage})
+      .eq("id",productId);
+
+    if (updateError) {
+      await deleteOldImage(newImage);
+      throw updateError;
+    }
+
+    // Удаляем старую фотографию после успешного обновления
+    await deleteOldImage(oldImage);
+
+    notify("Фотография товара успешно обновлена!");
+
+    await loadProducts();
+
+  } catch(error) {
+    notify("Ошибка фотографии: " + error.message);
+
+    button.disabled = false;
+    button.textContent = "Сохранить новую фотографию";
+  }
+}
+
+// Создание нового товара
 $("productForm").onsubmit = async e => {
   e.preventDefault();
 
@@ -140,16 +284,23 @@ $("productForm").onsubmit = async e => {
       image_url:image
     });
 
-    if (error) throw error;
+    if (error) {
+      if (image) await deleteOldImage(image);
+      throw error;
+    }
 
     $("productForm").reset();
+
     await loadProducts();
+
     notify("Товар создан. Теперь добавь его конфигурации и цены.");
+
   } catch(error) {
     notify("Ошибка: " + error.message);
   }
 };
 
+// Список товаров
 async function loadProducts() {
   $("productsList").textContent = "Загрузка...";
 
@@ -184,24 +335,80 @@ async function loadProducts() {
 
     return `
       <div class="product">
-        <h3>${escapeHTML(p.name)}</h3>
-        <p class="small">${escapeHTML(p.categories?.name || "Без категории")}</p>
 
-        ${p.image_url ? `<img src="${escapeHTML(p.image_url)}" style="width:90px;height:90px;object-fit:contain;border-radius:12px">` : ""}
+        <h3>${escapeHTML(p.name)}</h3>
+
+        <p class="small">
+          ${escapeHTML(p.categories?.name || "Без категории")}
+        </p>
+
+        <div style="margin:15px 0;padding:14px;background:#f7f7f5;border-radius:15px">
+
+          <b style="font-size:13px">Фотография товара</b>
+
+          <div style="margin:12px 0">
+            <img
+              id="preview-${p.id}"
+              src="${p.image_url ? escapeHTML(p.image_url) : ""}"
+              alt="${escapeHTML(p.name)}"
+              style="
+                width:150px;
+                height:150px;
+                object-fit:contain;
+                border-radius:12px;
+                background:white;
+                ${p.image_url ? "" : "display:none"}
+              "
+            >
+            ${p.image_url ? "" : '<p class="small">Фотография пока не загружена.</p>'}
+          </div>
+
+          <label>Выбрать новую фотографию</label>
+
+          <input
+            type="file"
+            id="edit-image-${p.id}"
+            class="product-image-input"
+            data-product-id="${p.id}"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+          >
+
+          <p class="small">JPG, PNG или WEBP. Максимум 5 МБ.</p>
+
+          <button
+            id="change-image-${p.id}"
+            type="button"
+            onclick="changeProductImage('${p.id}')"
+          >
+            Сохранить новую фотографию
+          </button>
+
+        </div>
 
         <div>
           ${items.map(v => `
             <div class="variant">
-              <b>${escapeHTML(v.memory || "Без памяти")} · ${escapeHTML(v.color || "Без цвета")}</b>
+
+              <b>
+                ${escapeHTML(v.memory || "Без памяти")} ·
+                ${escapeHTML(v.color || "Без цвета")}
+              </b>
+
               <p class="small">${escapeHTML(v.sim_type || "")}</p>
 
               <label>Цена (${escapeHTML(v.currency)})</label>
-              <input type="number" min="0" step="0.01"
+
+              <input
+                type="number"
+                min="0"
+                step="0.01"
                 id="price-${v.id}"
                 value="${v.price ?? ""}"
-                placeholder="Введи цену">
+                placeholder="Введи цену"
+              >
 
               <label>Наличие</label>
+
               <select id="availability-${v.id}">
                 <option value="in_stock" ${v.availability==="in_stock"?"selected":""}>В наличии</option>
                 <option value="on_order" ${v.availability==="on_order"?"selected":""}>Под заказ</option>
@@ -212,32 +419,45 @@ async function loadProducts() {
                 <button onclick="saveVariant('${v.id}')">Сохранить</button>
                 <button class="danger" onclick="deleteVariant('${v.id}')">Удалить</button>
               </div>
+
             </div>
           `).join("")}
 
           <details>
             <summary>Добавить конфигурацию</summary>
+
             <form onsubmit="addVariant(event,'${p.id}')">
+
               <label>Память</label>
               <input name="memory" placeholder="256 ГБ">
+
               <label>Цвет</label>
               <input name="color" placeholder="Silver">
+
               <label>Тип SIM</label>
               <input name="sim" placeholder="SIM + eSIM">
+
               <label>Цена в рублях</label>
               <input name="price" type="number" min="0" step="0.01" required>
+
               <button type="submit">Добавить конфигурацию</button>
+
             </form>
           </details>
         </div>
 
         <hr style="border:0;border-top:1px solid #eee;margin:15px 0">
-        <button class="danger" onclick="deleteProduct('${p.id}')">Удалить товар</button>
+
+        <button class="danger" onclick="deleteProduct('${p.id}')">
+          Удалить товар
+        </button>
+
       </div>
     `;
   }).join("");
 }
 
+// Сохранение цены и наличия
 async function saveVariant(id) {
   const rawPrice = $("price-"+id).value;
   const price = rawPrice === "" ? null : Number(rawPrice);
@@ -262,8 +482,10 @@ async function saveVariant(id) {
   notify("Цена и наличие обновлены.");
 }
 
+// Добавление конфигурации
 async function addVariant(event,productId) {
   event.preventDefault();
+
   const form = event.currentTarget;
   const data = new FormData(form);
 
@@ -286,6 +508,7 @@ async function addVariant(event,productId) {
   await loadProducts();
 }
 
+// Удаление конфигурации
 async function deleteVariant(id) {
   if (!confirm("Удалить эту конфигурацию?")) return;
 
@@ -301,8 +524,20 @@ async function deleteVariant(id) {
   notify("Конфигурация удалена.");
 }
 
+// Удаление товара
 async function deleteProduct(id) {
   if (!confirm("Удалить товар и все его конфигурации?")) return;
+
+  const {data:product,error:findError} = await db
+    .from("products")
+    .select("image_url")
+    .eq("id",id)
+    .single();
+
+  if (findError) {
+    notify(findError.message);
+    return;
+  }
 
   const {error} = await db.from("products")
     .delete().eq("id",id);
@@ -311,6 +546,8 @@ async function deleteProduct(id) {
     notify(error.message);
     return;
   }
+
+  await deleteOldImage(product.image_url);
 
   await loadProducts();
   notify("Товар удалён.");
