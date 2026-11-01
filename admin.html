@@ -88,7 +88,6 @@ button:disabled{opacity:.5}
 <button type="submit">Создать товар</button>
 </form>
 </div>
-
 <div class="card">
   <h2>📊 Управление прайсом Excel</h2>
   <p class="small">
@@ -121,6 +120,21 @@ button:disabled{opacity:.5}
   >
     📤 Загрузить и обновить цены
   </button>
+</div>
+  
+<div class="card">
+  <h2>📈 История изменения цен</h2>
+  <p class="small">
+    Здесь отображаются изменения цен после загрузки Excel.
+  </p>
+
+  <button type="button" id="loadPriceHistory">
+    Обновить историю
+  </button>
+
+  <div id="priceHistory">
+    Нажми «Обновить историю»
+  </div>
 </div>
 <div class="card">
 <h2>Товары и цены</h2>
