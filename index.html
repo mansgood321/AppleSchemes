@@ -1,0 +1,117 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apple Store</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f5f7;color:#1d1d1f;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif}
+header{background:#fff;padding:25px 18px;text-align:center}
+header h1{margin:0;font-size:27px}
+header p{color:#777;margin:7px 0 0}
+main{max-width:650px;margin:auto;padding:18px}
+h2{font-size:21px;margin:10px 0 18px}
+.categories{display:flex;gap:9px;overflow-x:auto;margin-bottom:20px}
+.categories button{border:0;border-radius:20px;padding:10px 16px;background:#e5e5ea;white-space:nowrap}
+.categories button.active{background:#1d1d1f;color:white}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.card{background:#fff;border-radius:17px;padding:15px;display:flex;flex-direction:column}
+.product-image{height:120px;display:grid;place-items:center;font-size:65px;background:#f7f7f9;border-radius:12px;margin-bottom:12px}
+.card h3{font-size:16px;margin:0 0 5px}
+.card p{color:#888;font-size:13px;margin:0 0 10px}
+.price{font-weight:700;margin-top:auto;margin-bottom:12px}
+.card button,.submit{background:#007aff;color:white;border:0;border-radius:12px;padding:12px;font-weight:600}
+form{background:#fff;padding:18px;border-radius:17px;margin-top:25px}
+label{display:block;font-size:13px;margin:13px 0 6px}
+input,textarea,select{width:100%;padding:13px;border:1px solid #ddd;border-radius:10px;font:inherit;background:white}
+textarea{resize:vertical}
+.submit{width:100%;margin-top:17px;font-size:15px}
+footer{text-align:center;color:#999;font-size:12px;padding:25px}
+</style>
+</head>
+<body>
+<header>
+<h1>Apple Store</h1>
+<p>Техника Apple по хорошим ценам 🍏</p>
+</header>
+<main>
+<h2>Каталог товаров</h2>
+<div class="categories" id="categories"></div>
+<div class="grid" id="products"></div>
+
+<form id="order">
+<h2>Оформить заявку</h2>
+<label>Выбранный товар</label>
+<select id="product" required>
+<option value="">Выберите товар</option>
+</select>
+<label>Ваше имя</label>
+<input id="name" placeholder="Как к вам обращаться?" required>
+<label>Telegram или телефон</label>
+<input id="contact" placeholder="@username или номер" required>
+<label>Комментарий</label>
+<textarea id="comment" rows="3" placeholder="Цвет, память, вопросы..."></textarea>
+<button class="submit" type="submit">Отправить заявку</button>
+</form>
+</main>
+<footer>Apple Store · Yerevan</footer>
+
+<script>
+const products=[
+{category:"iPhone",name:"iPhone 17 Pro",info:"256 ГБ · разные цвета",price:"от 525 000 ֏",emoji:"📱"},
+{category:"iPhone",name:"iPhone 17 Pro Max",info:"256 ГБ · разные цвета",price:"Уточняйте",emoji:"📱"},
+{category:"iPad",name:"iPad mini",info:"Разные конфигурации",price:"от 250 000 ֏",emoji:"📟"},
+{category:"MacBook",name:"MacBook Air",info:"Разные конфигурации",price:"Уточняйте",emoji:"💻"},
+{category:"Watch",name:"Apple Watch",info:"Разные модели",price:"Уточняйте",emoji:"⌚"},
+{category:"AirPods",name:"AirPods Pro",info:"Наушники Apple",price:"Уточняйте",emoji:"🎧"}
+];
+let current="Все";
+const categories=["Все",...new Set(products.map(p=>p.category))];
+const cat=document.getElementById("categories");
+const grid=document.getElementById("products");
+const select=document.getElementById("product");
+
+categories.forEach(c=>{
+let b=document.createElement("button");
+b.textContent=c;b.className=c==="Все"?"active":"";
+b.onclick=()=>{
+current=c;
+document.querySelectorAll(".categories button").forEach(x=>x.classList.remove("active"));
+b.classList.add("active");render();
+};
+cat.appendChild(b);
+});
+products.forEach(p=>{
+let o=document.createElement("option");
+o.value=p.name;o.textContent=p.name;select.appendChild(o);
+});
+function render(){
+grid.innerHTML="";
+products.filter(p=>current==="Все"||p.category===current).forEach(p=>{
+let card=document.createElement("div");
+card.className="card";
+card.innerHTML=`<div class="product-image">${p.emoji}</div><h3>${p.name}</h3><p>${p.info}</p><div class="price">${p.price}</div><button type="button">Оставить заявку</button>`;
+card.querySelector("button").onclick=()=>{
+select.value=p.name;
+document.getElementById("order").scrollIntoView({behavior:"smooth"});
+};
+grid.appendChild(card);
+});
+}
+render();
+
+document.getElementById("order").onsubmit=e=>{
+e.preventDefault();
+const message=
+"Заявка из Apple Store%0A"+
+"Товар: "+encodeURIComponent(select.value)+"%0A"+
+"Имя: "+encodeURIComponent(document.getElementById("name").value)+"%0A"+
+"Контакт: "+encodeURIComponent(document.getElementById("contact").value)+"%0A"+
+"Комментарий: "+encodeURIComponent(document.getElementById("comment").value);
+window.location.href="https://t.me/?text="+message;
+};
+</script>
+</body>
+</html>
