@@ -5,20 +5,24 @@ let storeProducts = [];
 let storeCategories = [];
 let selectedProduct = null;
 let selectedVariant = null;
+let storeVariants = [];
 
+// Элементы страницы
 const categoryMenu = document.getElementById("categoryMenu");
 const productList = document.getElementById("productList");
 
+// Защита текста при отображении
 function safeText(value) {
   return String(value ?? "").replace(/[&<>"']/g, c => ({
-    "&":"&amp;",
-    "<":"&lt;",
-    ">":"&gt;",
-    '"':"&quot;",
-    "'":"&#39;"
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
   })[c]);
 }
 
+// Форматирование цены
 function formatPrice(price, currency = "RUB") {
   if (price === null || price === undefined || price === "") {
     return "Цена уточняется";
@@ -36,24 +40,33 @@ function formatPrice(price, currency = "RUB") {
 
 // Загрузка каталога
 async function loadStore() {
+  if (!categoryMenu || !productList) {
+    console.error("Не найдены элементы каталога");
+    return;
+  }
+
   productList.innerHTML = "<p>Загружаем каталог...</p>";
 
   try {
-    const [categoriesResult, productsResult, variantsResult] =
-      await Promise.all([
-        storeDB.from("categories")
-          .select("id,name,slug,icon")
-          .eq("active", true)
-          .order("sort_order"),
+    const [
+      categoriesResult,
+      productsResult,
+      variantsResult
+    ] = await Promise.all([
 
-        storeDB.from("products")
-          .select("id,name,description,image_url,category_id")
-          .eq("active", true)
-          .order("sort_order"),
+      storeDB.from("categories")
+        .select("id,name,slug,icon")
+        .eq("active", true)
+        .order("sort_order"),
 
-        storeDB.from("product_variants")
-          .select("*")
-      ]);
+      storeDB.from("products")
+        .select("id,name,description,image_url,category_id")
+        .eq("active", true)
+        .order("sort_order"),
+
+      storeDB.from("product_variants")
+        .select("*")
+    ]);
 
     if (categoriesResult.error) throw categoriesResult.error;
     if (productsResult.error) throw productsResult.error;
@@ -61,12 +74,11 @@ async function loadStore() {
 
     storeCategories = categoriesResult.data || [];
     storeProducts = productsResult.data || [];
-
-    window.storeVariants = variantsResult.data || [];
+    storeVariants = variantsResult.data || [];
 
     renderCategories();
 
-    if (storeCategories.length > 0) {
+    if (storeCategories.length) {
       renderProducts(storeCategories[0].id);
     } else {
       productList.innerHTML = "<p>Категорий пока нет.</p>";
@@ -85,7 +97,7 @@ async function loadStore() {
   }
 }
 
-// Категории
+// Отображение категорий
 function renderCategories() {
   categoryMenu.innerHTML = storeCategories.map((category, index) => `
     <button
@@ -97,7 +109,7 @@ function renderCategories() {
   `).join("");
 }
 
-// Товары выбранной категории
+// Отображение товаров
 function renderProducts(categoryId, button) {
   document.querySelectorAll(".category-button")
     .forEach(item => item.classList.remove("active"));
@@ -118,15 +130,12 @@ function renderProducts(categoryId, button) {
   }
 
   productList.innerHTML = products.map(product => {
-    const variants = window.storeVariants.filter(
-      variant => variant.product_id === product.id
+    const variants = storeVariants.filter(
+      variant => variant.product_id === product.id &&
+        variant.availability !== "out_of_stock"
     );
 
-    const available = variants.filter(
-      variant => variant.availability !== "out_of_stock"
-    );
-
-    const prices = available
+    const prices = variants
       .filter(variant => variant.price !== null)
       .map(variant => Number(variant.price));
 
@@ -135,7 +144,7 @@ function renderProducts(categoryId, button) {
       : null;
 
     const currency =
-      available.find(v => v.price !== null)?.currency || "RUB";
+      variants.find(v => v.price !== null)?.currency || "RUB";
 
     return `
       <article class="store-card">
@@ -166,15 +175,15 @@ function renderProducts(categoryId, button) {
   }).join("");
 }
 
-// Открываем товар
+// Открытие товара
 function openStoreProduct(id) {
   selectedProduct = storeProducts.find(p => p.id === id);
 
   if (!selectedProduct) return;
 
-  const variants = window.storeVariants.filter(
+  const variants = storeVariants.filter(
     v => v.product_id === id &&
-    v.availability !== "out_of_stock"
+      v.availability !== "out_of_stock"
   );
 
   if (!variants.length) {
@@ -183,8 +192,13 @@ function openStoreProduct(id) {
   }
 
   const modal = document.getElementById("productModal");
-  modal.classList.remove("hidden");
 
+  if (!modal) {
+    alert("Не найдено окно товара.");
+    return;
+  }
+
+  modal.classList.remove("hidden");
   document.getElementById("modalTitle").textContent =
     selectedProduct.name;
 
@@ -197,11 +211,12 @@ function openStoreProduct(id) {
   ];
 
   fields.forEach(([elementId, field]) => {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
     const values = [...new Set(
       variants.map(v => v[field]).filter(Boolean)
     )];
-
-    const element = document.getElementById(elementId);
 
     element.innerHTML = values.length
       ? values.map(v =>
@@ -215,14 +230,16 @@ function openStoreProduct(id) {
   updateStoreVariant();
 }
 
-// Обновление выбранной конфигурации
+// Обновление конфигурации
 function updateStoreVariant() {
   const modal = document.getElementById("productModal");
+  if (!modal) return;
+
   const variants = JSON.parse(modal.dataset.variants || "[]");
 
-  const memory = document.getElementById("modalMemory").value;
-  const color = document.getElementById("modalColor").value;
-  const sim = document.getElementById("modalSim").value;
+  const memory = document.getElementById("modalMemory")?.value || "";
+  const color = document.getElementById("modalColor")?.value || "";
+  const sim = document.getElementById("modalSim")?.value || "";
 
   selectedVariant = variants.find(v =>
     (v.memory || "") === memory &&
@@ -230,21 +247,29 @@ function updateStoreVariant() {
     (v.sim_type || "") === sim
   );
 
-  document.getElementById("modalPrice").textContent =
-    selectedVariant
-      ? formatPrice(selectedVariant.price, selectedVariant.currency)
+  const priceElement = document.getElementById("modalPrice");
+  const orderButton = document.getElementById("modalOrder");
+
+  if (priceElement) {
+    priceElement.textContent = selectedVariant
+      ? formatPrice(
+          selectedVariant.price,
+          selectedVariant.currency
+        )
       : "Такая комбинация недоступна";
+  }
 
-  document.getElementById("modalOrder").disabled =
-    !selectedVariant;
+  if (orderButton) {
+    orderButton.disabled = !selectedVariant;
+  }
 }
 
+// Закрытие окна товара
 function closeStoreProduct() {
-  document.getElementById("productModal").classList.add("hidden");
+  document.getElementById("productModal")?.classList.add("hidden");
 }
 
-// Отправка заявки
-
+// Отправка заявки через Telegram-бота
 async function submitStoreOrder() {
   if (!selectedProduct || !selectedVariant) {
     alert("Сначала выберите товар и конфигурацию");
@@ -274,48 +299,33 @@ async function submitStoreOrder() {
     );
 
     if (error) throw error;
-    if (!data?.success) throw new Error("Заявка не отправлена");
 
-    alert("✅ Заявка успешно отправлена! Менеджер скоро свяжется с вами.");
+    if (!data?.success) {
+      throw new Error("Заявка не отправлена");
+    }
+
+    alert(
+      "✅ Заявка успешно отправлена! Менеджер скоро свяжется с вами."
+    );
 
     closeStoreProduct();
 
   } catch (error) {
     console.error("Order error:", error);
-    alert("Не удалось отправить заявку. Попробуйте ещё раз.");
+
+    alert(
+      "Не удалось отправить заявку. Попробуйте ещё раз."
+    );
   }
 }
-  if (!selectedProduct || !selectedVariant) return;
 
-  const name = prompt("Как вас зовут?");
-  if (!name?.trim()) return;
+// Делаем функции доступными HTML-кнопкам
+window.loadStore = loadStore;
+window.renderProducts = renderProducts;
+window.openStoreProduct = openStoreProduct;
+window.updateStoreVariant = updateStoreVariant;
+window.closeStoreProduct = closeStoreProduct;
+window.submitStoreOrder = submitStoreOrder;
 
-  const contact = prompt("Ваш Telegram или телефон?");
-  if (!contact?.trim()) return;
-
-  const message = [
-    "НОВАЯ ЗАЯВКА — APPLE SCHEMES",
-    "Товар: " + selectedProduct.name,
-    "Память: " + (selectedVariant.memory || "—"),
-    "Цвет: " + (selectedVariant.color || "—"),
-    "SIM: " + (selectedVariant.sim_type || "—"),
-    "Цена: " + formatPrice(
-      selectedVariant.price,
-      selectedVariant.currency
-    ),
-    "Имя: " + name,
-    "Контакт: " + contact
-  ].join("\n");
-
-  try {
-    await navigator.clipboard.writeText(message);
-    alert("Заявка скопирована. Отправьте её менеджеру в Telegram.");
-  } catch (error) {
-    prompt("Скопируйте текст заявки:", message);
-  }
-
-  window.open("https://t.me/burya_24", "_blank");
-}
-
-// Запуск
+// Запуск каталога
 loadStore();
