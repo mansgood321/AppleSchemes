@@ -4,114 +4,328 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f5f5f7">
 <title>Apple Store</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#f5f5f7;color:#1d1d1f;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif}
-header{background:#fff;padding:25px 18px;text-align:center}
-header h1{margin:0;font-size:27px}
-header p{color:#777;margin:7px 0 0}
-main{max-width:650px;margin:auto;padding:18px}
-h2{font-size:21px;margin:10px 0 18px}
-.categories{display:flex;gap:9px;overflow-x:auto;margin-bottom:20px}
-.categories button{border:0;border-radius:20px;padding:10px 16px;background:#e5e5ea;white-space:nowrap}
+button,select,input,textarea{font:inherit}
+button{cursor:pointer}
+header{background:#fff;padding:17px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eee}
+.logo{font-size:21px;font-weight:750;letter-spacing:-1px}
+.logo span{color:#888}
+.settings{display:flex;gap:7px}
+.settings select{border:0;background:#f2f2f5;border-radius:10px;padding:8px;font-size:12px}
+main{max-width:760px;margin:auto;padding:18px}
+.hero{background:#171719;color:white;border-radius:23px;padding:28px 22px;margin-bottom:28px;overflow:hidden}
+.hero small{color:#aaa;letter-spacing:2px;text-transform:uppercase}
+.hero h1{font-size:32px;line-height:1.1;letter-spacing:-1.5px;margin:14px 0}
+.hero p{color:#c5c5ca;line-height:1.5;font-size:14px;max-width:300px}
+.primary{background:white;color:#171719;border:0;border-radius:12px;padding:13px 19px;font-weight:700;margin-top:12px}
+.section-title{font-size:22px;letter-spacing:-.6px;margin:25px 0 15px}
+.features{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:18px 0 30px}
+.feature{background:white;padding:13px 9px;border-radius:14px;text-align:center;font-size:12px;color:#666}
+.feature b{display:block;color:#222;font-size:14px;margin-bottom:5px}
+.categories{display:flex;gap:9px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none}
+.categories button{white-space:nowrap;border:0;background:#e6e6eb;border-radius:20px;padding:10px 16px;font-size:13px}
 .categories button.active{background:#1d1d1f;color:white}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
-.card{background:#fff;border-radius:17px;padding:15px;display:flex;flex-direction:column}
-.product-image{height:120px;display:grid;place-items:center;font-size:65px;background:#f7f7f9;border-radius:12px;margin-bottom:12px}
-.card h3{font-size:16px;margin:0 0 5px}
-.card p{color:#888;font-size:13px;margin:0 0 10px}
-.price{font-weight:700;margin-top:auto;margin-bottom:12px}
-.card button,.submit{background:#007aff;color:white;border:0;border-radius:12px;padding:12px;font-weight:600}
-form{background:#fff;padding:18px;border-radius:17px;margin-top:25px}
-label{display:block;font-size:13px;margin:13px 0 6px}
-input,textarea,select{width:100%;padding:13px;border:1px solid #ddd;border-radius:10px;font:inherit;background:white}
-textarea{resize:vertical}
-.submit{width:100%;margin-top:17px;font-size:15px}
-footer{text-align:center;color:#999;font-size:12px;padding:25px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.card{background:white;border-radius:17px;padding:13px;min-width:0}
+.photo{height:125px;border-radius:12px;background:#f6f6f8;display:grid;place-items:center;font-size:57px;margin-bottom:12px}
+.card h3{font-size:15px;margin:0 0 6px}
+.muted{font-size:12px;color:#888;line-height:1.5}
+.price{font-weight:750;margin:12px 0}
+.action{width:100%;background:#171719;color:white;border:0;border-radius:11px;padding:11px;font-size:13px;font-weight:650}
+.secondary{background:#e9e9ed;color:#222}
+.back{border:0;background:transparent;padding:8px 0;color:#666;margin-bottom:12px}
+.panel{background:white;border-radius:19px;padding:19px}
+.product-hero{height:190px;background:#f4f4f6;border-radius:16px;display:grid;place-items:center;font-size:90px;margin-bottom:18px}
+.product-name{font-size:25px;letter-spacing:-1px;margin:0 0 7px}
+label{display:block;font-size:13px;font-weight:650;margin:17px 0 7px}
+select,input,textarea{width:100%;padding:13px;border:1px solid #e1e1e5;border-radius:11px;background:white;color:#222}
+.current-price{font-size:24px;font-weight:750;margin:20px 0 8px}
+.note{font-size:12px;color:#888;line-height:1.5}
+form{background:white;border-radius:18px;padding:19px;margin-top:24px}
+form h2{margin-top:0}
+.submit{width:100%;background:#087cf0;color:white;border:0;border-radius:12px;padding:15px;font-weight:700;margin-top:19px}
+footer{text-align:center;padding:30px 10px;color:#999;font-size:12px}
+.hidden{display:none!important}
+.empty{background:white;border-radius:15px;padding:22px;text-align:center;color:#888;line-height:1.5}
+@media(max-width:380px){main{padding:13px}.hero h1{font-size:28px}.grid{gap:9px}.card{padding:10px}}
 </style>
 </head>
 <body>
-<header>
-<h1>Apple Store</h1>
-<p>Техника Apple по хорошим ценам 🍏</p>
-</header>
-<main>
-<h2>Каталог товаров</h2>
-<div class="categories" id="categories"></div>
-<div class="grid" id="products"></div>
 
-<form id="order">
-<h2>Оформить заявку</h2>
-<label>Выбранный товар</label>
-<select id="product" required>
-<option value="">Выберите товар</option>
-</select>
-<label>Ваше имя</label>
-<input id="name" placeholder="Как к вам обращаться?" required>
-<label>Telegram или телефон</label>
-<input id="contact" placeholder="@username или номер" required>
-<label>Комментарий</label>
-<textarea id="comment" rows="3" placeholder="Цвет, память, вопросы..."></textarea>
-<button class="submit" type="submit">Отправить заявку</button>
-</form>
+<header>
+  <div class="logo">APPLE<span> STORE.</span></div>
+  <div class="settings">
+    <select aria-label="Язык" disabled><option>RU 🇷🇺</option></select>
+    <select aria-label="Валюта" disabled><option>RUB ₽</option></select>
+  </div>
+</header>
+
+<main>
+<section id="homeView">
+  <div class="hero">
+    <small>Добро пожаловать</small>
+    <h1>Технологии,<br>которые ближе.</h1>
+    <p>Оригинальная техника Apple. Выбирай модель, конфигурацию и оставляй заявку на покупку.</p>
+    <button class="primary" onclick="openCatalog()">Перейти в каталог →</button>
+  </div>
+
+  <h2 class="section-title">Почему мы?</h2>
+  <div class="features">
+    <div class="feature"><b>🍏 Apple</b>Техника бренда</div>
+    <div class="feature"><b>💬 Связь</b>Лично с менеджером</div>
+    <div class="feature"><b>📦 Заказ</b>Подбор конфигурации</div>
+  </div>
+
+  <h2 class="section-title">Популярные категории</h2>
+  <div class="grid" id="homeCategories"></div>
+</section>
+
+<section id="catalogView" class="hidden">
+  <button class="back" onclick="showView('homeView')">← Главная</button>
+  <h2 class="section-title">Каталог</h2>
+  <div class="categories" id="categoryButtons"></div>
+  <div class="grid" id="productGrid"></div>
+</section>
+
+<section id="productView" class="hidden">
+  <button class="back" onclick="openCatalog()">← Назад в каталог</button>
+  <div class="panel">
+    <div class="product-hero">📱</div>
+    <h1 class="product-name" id="productName"></h1>
+    <p class="muted">Выберите подходящую конфигурацию</p>
+
+    <label for="memory">Память</label>
+    <select id="memory"></select>
+
+    <label for="color">Цвет</label>
+    <select id="color"></select>
+
+    <label for="sim">SIM-карта</label>
+    <select id="sim"></select>
+
+    <div class="current-price" id="productPrice">Цена уточняется</div>
+    <p class="note" id="availability"></p>
+    <button class="action" id="orderButton" onclick="goToOrder()">Оформить заявку</button>
+  </div>
+
+  <form id="orderForm">
+    <h2>Оформление заявки</h2>
+    <p class="muted" id="orderSummary">Выбранная конфигурация появится здесь.</p>
+
+    <label for="customerName">Ваше имя</label>
+    <input id="customerName" required placeholder="Как к вам обращаться?">
+
+    <label for="customerContact">Контакт для связи</label>
+    <input id="customerContact" required placeholder="@username или телефон">
+
+    <label for="customerComment">Комментарий</label>
+    <textarea id="customerComment" rows="3" placeholder="Дополнительные пожелания"></textarea>
+
+    <button class="submit" type="submit">Отправить заявку в Telegram</button>
+    <p class="note">Заявка будет скопирована. Затем откроется чат с менеджером, куда нужно вставить и отправить сообщение.</p>
+  </form>
+</section>
 </main>
-<footer>Apple Store · Yerevan</footer>
+
+<footer>
+  APPLE STORE · Техника Apple
+</footer>
 
 <script>
-const products=[
-{category:"iPhone",name:"iPhone 17 Pro",info:"256 ГБ · разные цвета",price:"от 525 000 ֏",emoji:"📱"},
-{category:"iPhone",name:"iPhone 17 Pro Max",info:"256 ГБ · разные цвета",price:"Уточняйте",emoji:"📱"},
-{category:"iPad",name:"iPad mini",info:"Разные конфигурации",price:"от 250 000 ֏",emoji:"📟"},
-{category:"MacBook",name:"MacBook Air",info:"Разные конфигурации",price:"Уточняйте",emoji:"💻"},
-{category:"Watch",name:"Apple Watch",info:"Разные модели",price:"Уточняйте",emoji:"⌚"},
-{category:"AirPods",name:"AirPods Pro",info:"Наушники Apple",price:"Уточняйте",emoji:"🎧"}
-];
-let current="Все";
-const categories=["Все",...new Set(products.map(p=>p.category))];
-const cat=document.getElementById("categories");
-const grid=document.getElementById("products");
-const select=document.getElementById("product");
+let database;
+let activeCategory="iPhone";
+let activeProduct=null;
+let activeVariant=null;
 
-categories.forEach(c=>{
-let b=document.createElement("button");
-b.textContent=c;b.className=c==="Все"?"active":"";
-b.onclick=()=>{
-current=c;
-document.querySelectorAll(".categories button").forEach(x=>x.classList.remove("active"));
-b.classList.add("active");render();
+const categoriesEmoji={
+"iPhone":"📱",
+"iPad":"📟",
+"MacBook":"💻",
+"Apple Watch":"⌚",
+"AirPods":"🎧",
+"Аксессуары":"🎁"
 };
-cat.appendChild(b);
-});
-products.forEach(p=>{
-let o=document.createElement("option");
-o.value=p.name;o.textContent=p.name;select.appendChild(o);
-});
-function render(){
-grid.innerHTML="";
-products.filter(p=>current==="Все"||p.category===current).forEach(p=>{
-let card=document.createElement("div");
+
+const money=value=>Number(value).toLocaleString("ru-RU")+" ₽";
+
+function showView(id){
+["homeView","catalogView","productView"].forEach(x=>
+document.getElementById(x).classList.add("hidden"));
+document.getElementById(id).classList.remove("hidden");
+window.scrollTo({top:0,behavior:"smooth"});
+}
+
+async function loadDatabase(){
+try{
+const response=await fetch("./products.json");
+if(!response.ok)throw new Error("Database error");
+database=await response.json();
+document.querySelector(".logo").innerHTML=
+database.store.name.toUpperCase()+"<span>.</span>";
+renderHomeCategories();
+}catch(error){
+document.getElementById("homeView").innerHTML=
+'<div class="empty">Не удалось загрузить базу товаров. Проверь, что файл products.json сохранён в корне репозитория.</div>';
+}
+}
+
+function renderHomeCategories(){
+const box=document.getElementById("homeCategories");
+box.innerHTML="";
+database.categories.forEach(category=>{
+const card=document.createElement("button");
 card.className="card";
-card.innerHTML=`<div class="product-image">${p.emoji}</div><h3>${p.name}</h3><p>${p.info}</p><div class="price">${p.price}</div><button type="button">Оставить заявку</button>`;
-card.querySelector("button").onclick=()=>{
-select.value=p.name;
-document.getElementById("order").scrollIntoView({behavior:"smooth"});
-};
+card.style.border="0";
+card.style.textAlign="left";
+card.innerHTML=
+'<div class="photo">'+(categoriesEmoji[category]||"🍏")+
+'</div><h3>'+category+'</h3><div class="muted">Перейти к товарам →</div>';
+card.onclick=()=>openCategory(category);
+box.appendChild(card);
+});
+}
+
+function openCatalog(){
+renderCatalog();
+showView("catalogView");
+}
+
+function openCategory(category){
+activeCategory=category;
+openCatalog();
+}
+
+function renderCatalog(){
+const buttons=document.getElementById("categoryButtons");
+buttons.innerHTML="";
+database.categories.forEach(category=>{
+const b=document.createElement("button");
+b.textContent=category;
+b.className=category===activeCategory?"active":"";
+b.onclick=()=>{activeCategory=category;renderCatalog();};
+buttons.appendChild(b);
+});
+
+const grid=document.getElementById("productGrid");
+grid.innerHTML="";
+const items=database.products.filter(p=>p.category===activeCategory);
+
+if(!items.length){
+grid.innerHTML='<div class="empty" style="grid-column:1/-1">Скоро здесь появятся товары этой категории.</div>';
+return;
+}
+
+items.forEach(p=>{
+const card=document.createElement("div");
+card.className="card";
+card.innerHTML=
+'<div class="photo">'+(categoriesEmoji[p.category]||"🍏")+
+'</div><h3>'+p.name+'</h3><p class="muted">Выбор конфигурации и цвета</p>'+
+'<button class="action">Выбрать модель</button>';
+card.querySelector("button").onclick=()=>openProduct(p);
 grid.appendChild(card);
 });
 }
-render();
 
-document.getElementById("order").onsubmit=e=>{
-e.preventDefault();
-const message=
-"Заявка из Apple Store%0A"+
-"Товар: "+encodeURIComponent(select.value)+"%0A"+
-"Имя: "+encodeURIComponent(document.getElementById("name").value)+"%0A"+
-"Контакт: "+encodeURIComponent(document.getElementById("contact").value)+"%0A"+
-"Комментарий: "+encodeURIComponent(document.getElementById("comment").value);
-window.location.href="https://t.me/?text="+message;
-};
+function uniqueValues(variants,key){
+return [...new Set(variants.map(v=>v[key]))];
+}
+
+function fillSelect(id,values){
+const el=document.getElementById(id);
+el.innerHTML="";
+values.forEach(value=>{
+const option=document.createElement("option");
+option.value=value;
+option.textContent=value;
+el.appendChild(option);
+});
+}
+
+function openProduct(product){
+activeProduct=product;
+activeVariant=null;
+document.getElementById("productName").textContent=product.name;
+
+fillSelect("memory",uniqueValues(product.variants,"memory"));
+fillSelect("color",uniqueValues(product.variants,"color"));
+fillSelect("sim",uniqueValues(product.variants,"sim"));
+
+["memory","color","sim"].forEach(id=>{
+document.getElementById(id).onchange=updateVariant;
+});
+
+updateVariant();
+showView("productView");
+}
+
+function updateVariant(){
+const memory=document.getElementById("memory").value;
+const color=document.getElementById("color").value;
+const sim=document.getElementById("sim").value;
+
+activeVariant=activeProduct.variants.find(v=>
+v.memory===memory&&v.color===color&&v.sim===sim
+)||null;
+
+const price=document.getElementById("productPrice");
+const availability=document.getElementById("availability");
+const button=document.getElementById("orderButton");
+
+if(!activeVariant){
+price.textContent="Такой комбинации нет";
+availability.textContent="Выберите другую конфигурацию.";
+button.disabled=true;
+button.style.opacity=".5";
+}else{
+price.textContent=activeVariant.price!==null?money(activeVariant.price):"Цена уточняется";
+availability.textContent=activeVariant.available?"Можно оставить заявку на эту конфигурацию.":"Временно нет в наличии.";
+button.disabled=!activeVariant.available;
+button.style.opacity=button.disabled?".5":"1";
+}
+}
+
+function goToOrder(){
+if(!activeVariant)return;
+document.getElementById("orderSummary").textContent=
+activeProduct.name+" · "+activeVariant.memory+" · "+
+activeVariant.color+" · "+activeVariant.sim+
+" · "+(activeVariant.price!==null?money(activeVariant.price):"цена уточняется");
+document.getElementById("orderForm").scrollIntoView({behavior:"smooth"});
+}
+
+document.getElementById("orderForm").addEventListener("submit",async event=>{
+event.preventDefault();
+if(!activeProduct||!activeVariant)return;
+
+const price=activeVariant.price!==null?money(activeVariant.price):"уточняется";
+const message=[
+"ЗАЯВКА — APPLE STORE",
+"Товар: "+activeProduct.name,
+"Память: "+activeVariant.memory,
+"Цвет: "+activeVariant.color,
+"SIM: "+activeVariant.sim,
+"Цена: "+price,
+"Имя: "+document.getElementById("customerName").value,
+"Контакт: "+document.getElementById("customerContact").value,
+"Комментарий: "+(document.getElementById("customerComment").value||"нет")
+].join("\n");
+
+try{
+await navigator.clipboard.writeText(message);
+alert("Заявка скопирована! Сейчас откроется чат с менеджером. Вставьте сообщение и отправьте его.");
+window.location.href="https://t.me/"+database.store.manager;
+}catch(error){
+prompt("Скопируйте текст заявки и отправьте его менеджеру @"+database.store.manager,message);
+window.location.href="https://t.me/"+database.store.manager;
+}
+});
+
+loadDatabase();
 </script>
 </body>
 </html>
