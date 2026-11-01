@@ -1,0 +1,104 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f4f5f7">
+<title>Apple Store — Управление</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f5f7;color:#202124;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif}
+header{background:#fff;padding:18px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #eee}
+header b{font-size:19px}
+main{max-width:850px;margin:auto;padding:18px}
+h1{font-size:25px;letter-spacing:-1px}
+h2{font-size:18px;margin-top:0}
+.card{background:white;border-radius:17px;padding:18px;margin:15px 0}
+input,select,textarea{width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;margin:6px 0 14px;background:white;font:inherit}
+label{font-size:13px;font-weight:600}
+button{border:0;border-radius:10px;padding:12px 16px;background:#171719;color:white;font-weight:650;cursor:pointer}
+button.secondary{background:#eee;color:#222}
+button.danger{background:#fff0f0;color:#c22}
+button:disabled{opacity:.5}
+.hidden{display:none!important}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row>*{flex:1}
+.product{border:1px solid #eee;border-radius:13px;padding:14px;margin:12px 0}
+.product h3{margin:0 0 6px}
+.variant{background:#f6f6f8;padding:12px;border-radius:11px;margin:10px 0}
+.small{font-size:12px;color:#777}
+#message{padding:12px;border-radius:10px;background:#edf4ff;color:#174d8b;margin:12px 0}
+#message:empty{display:none}
+.topline{display:flex;justify-content:space-between;align-items:center;gap:10px}
+</style>
+</head>
+<body>
+<header>
+<b>🍏 Apple Store Admin</b>
+<button id="logout" class="secondary hidden">Выйти</button>
+</header>
+<main>
+<div id="message"></div>
+
+<section id="login">
+<div class="card">
+<h1>Вход администратора</h1>
+<p class="small">Войди под своей учётной записью Supabase.</p>
+<form id="loginForm">
+<label>Email</label>
+<input id="email" type="email" required placeholder="Твоя почта">
+<label>Пароль</label>
+<input id="password" type="password" required placeholder="Пароль">
+<button type="submit">Войти</button>
+</form>
+</div>
+</section>
+
+<section id="dashboard" class="hidden">
+<div class="topline">
+<h1>Управление магазином</h1>
+<button id="refresh" class="secondary">Обновить</button>
+</div>
+
+<div class="card">
+<h2>Добавить категорию</h2>
+<form id="categoryForm">
+<label>Название категории</label>
+<input id="categoryName" required placeholder="Например, iPhone">
+<label>Идентификатор (латиницей)</label>
+<input id="categorySlug" required placeholder="Например, iphone">
+<button type="submit">Добавить категорию</button>
+</form>
+</div>
+
+<div class="card">
+<h2>Добавить товар</h2>
+<form id="productForm">
+<label>Категория</label>
+<select id="productCategory" required></select>
+<label>Название модели</label>
+<input id="productName" required placeholder="iPhone 17 Pro Max">
+<label>Модель / артикул</label>
+<input id="productModel" placeholder="17PM">
+<label>Описание</label>
+<textarea id="productDescription" rows="2" placeholder="Описание товара"></textarea>
+<label>Фотография</label>
+<input id="productImage" type="file" accept="image/*">
+<button type="submit">Создать товар</button>
+</form>
+</div>
+
+<div class="card">
+<h2>Товары и цены</h2>
+<p class="small">Меняй цену прямо здесь. Сохранение обновляет базу магазина.</p>
+<div id="productsList">Загрузка...</div>
+</div>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase-config.js"></script>
+<script src="./admin.js"></script>
+</body>
+</html>
