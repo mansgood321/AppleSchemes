@@ -6,7 +6,6 @@ let storeCategories = [];
 let selectedProduct = null;
 let selectedVariant = null;
 
-const store = document.getElementById("store");
 const categoryMenu = document.getElementById("categoryMenu");
 const productList = document.getElementById("productList");
 
@@ -20,166 +19,206 @@ function safeText(value) {
   })[c]);
 }
 
-function formatPrice(price, currency) {
-  if (price === null || price === undefined) {
+function formatPrice(price, currency = "RUB") {
+  if (price === null || price === undefined || price === "") {
     return "Цена уточняется";
   }
 
-  const symbols = {RUB:"₽", AMD:"֏", USD:"$"};
+  const symbols = {
+    RUB: "₽",
+    AMD: "֏",
+    USD: "$"
+  };
+
   return Number(price).toLocaleString("ru-RU") +
     " " + (symbols[currency] || currency);
 }
 
+// Загрузка каталога
 async function loadStore() {
-  store.textContent = "Загружаем каталог...";
+  productList.innerHTML = "<p>Загружаем каталог...</p>";
 
-  const [categoriesResult, productsResult] = await Promise.all([
-    storeDB.from("categories")
-      .select("id,name,slug,icon")
-      .eq("active",true)
-      .order("sort_order"),
+  try {
+    const [categoriesResult, productsResult, variantsResult] =
+      await Promise.all([
+        storeDB.from("categories")
+          .select("id,name,slug,icon")
+          .eq("active", true)
+          .order("sort_order"),
 
-    storeDB.from("products")
-      .select("id,name,description,image_url,category_id,categories(name)")
-      .eq("active",true)
-      .order("sort_order")
-  ]);
+        storeDB.from("products")
+          .select("id,name,description,image_url,category_id")
+          .eq("active", true)
+          .order("sort_order"),
 
-  if (categoriesResult.error || productsResult.error) {
-    store.textContent = "Не удалось загрузить каталог. Проверь подключение.";
-    return;
-  }
+        storeDB.from("product_variants")
+          .select("*")
+      ]);
 
-  storeCategories = categoriesResult.data || [];
-  storeProducts = productsResult.data || [];
+    if (categoriesResult.error) throw categoriesResult.error;
+    if (productsResult.error) throw productsResult.error;
+    if (variantsResult.error) throw variantsResult.error;
 
-  renderCategories();
+    storeCategories = categoriesResult.data || [];
+    storeProducts = productsResult.data || [];
 
-  if (storeCategories.length) {
-    renderProducts(storeCategories[0].id);
-  } else {
-    store.innerHTML = "Каталог пока пуст.";
+    window.storeVariants = variantsResult.data || [];
+
+    renderCategories();
+
+    if (storeCategories.length > 0) {
+      renderProducts(storeCategories[0].id);
+    } else {
+      productList.innerHTML = "<p>Категорий пока нет.</p>";
+    }
+
+  } catch (error) {
+    console.error("Store loading error:", error);
+
+    productList.innerHTML = `
+      <div style="padding:20px;background:#fff0f0;border-radius:15px">
+        <b>Не удалось загрузить каталог</b>
+        <p>${safeText(error.message)}</p>
+        <button onclick="loadStore()">Повторить загрузку</button>
+      </div>
+    `;
   }
 }
 
+// Категории
 function renderCategories() {
-  categoryMenu.innerHTML = storeCategories.map((c,i) => `
-    <button class="category-button ${i===0?"active":""}"
-      onclick="renderProducts('${c.id}',this)">
-      ${safeText(c.icon || "🍏")} ${safeText(c.name)}
+  categoryMenu.innerHTML = storeCategories.map((category, index) => `
+    <button
+      class="category-button ${index === 0 ? "active" : ""}"
+      onclick="renderProducts('${category.id}', this)">
+      ${safeText(category.icon || "🍏")}
+      ${safeText(category.name)}
     </button>
   `).join("");
 }
 
-async function renderProducts(categoryId, button) {
+// Товары выбранной категории
+function renderProducts(categoryId, button) {
   document.querySelectorAll(".category-button")
-    .forEach(b=>b.classList.remove("active"));
+    .forEach(item => item.classList.remove("active"));
 
-  if (button) button.classList.add("active");
-  else document.querySelector(".category-button")?.classList.add("active");
+  if (button) {
+    button.classList.add("active");
+  } else {
+    document.querySelector(".category-button")?.classList.add("active");
+  }
 
-  const {data,error} = await storeDB
-    .from("product_variants")
-    .select("*");
+  const products = storeProducts.filter(
+    product => product.category_id === categoryId
+  );
 
-  if (error) {
-    productList.textContent = "Ошибка загрузки товаров.";
+  if (!products.length) {
+    productList.innerHTML = "<p>В этой категории пока нет товаров.</p>";
     return;
   }
 
-  const products = storeProducts.filter(p =>
-    p.category_id === categoryId
-  );
-
-  productList.innerHTML = products.map(p => {
-    const variants = data.filter(v =>
-      v.product_id === p.id
+  productList.innerHTML = products.map(product => {
+    const variants = window.storeVariants.filter(
+      variant => variant.product_id === product.id
     );
 
-    const prices = variants
-      .filter(v => v.price !== null && v.availability !== "out_of_stock")
-      .map(v => Number(v.price));
+    const available = variants.filter(
+      variant => variant.availability !== "out_of_stock"
+    );
+
+    const prices = available
+      .filter(variant => variant.price !== null)
+      .map(variant => Number(variant.price));
 
     const lowestPrice = prices.length
       ? Math.min(...prices)
       : null;
 
+    const currency =
+      available.find(v => v.price !== null)?.currency || "RUB";
+
     return `
       <article class="store-card">
+
         <div class="store-photo">
-          ${p.image_url
-            ? `<img src="${safeText(p.image_url)}" alt="${safeText(p.name)}">`
+          ${product.image_url
+            ? `<img src="${safeText(product.image_url)}"
+                    alt="${safeText(product.name)}">`
             : "🍏"}
         </div>
-        <h3>${safeText(p.name)}</h3>
-        <p>${safeText(p.description || "Выберите конфигурацию")}</p>
+
+        <h3>${safeText(product.name)}</h3>
+
+        <p>${safeText(product.description || "Выберите конфигурацию")}</p>
+
         <div class="store-price">
           ${lowestPrice !== null
-            ? "от " + formatPrice(lowestPrice,variants[0]?.currency || "RUB")
+            ? "от " + formatPrice(lowestPrice, currency)
             : "Цена уточняется"}
         </div>
-        <button onclick="openStoreProduct('${p.id}')">
+
+        <button onclick="openStoreProduct('${product.id}')">
           Выбрать модель
         </button>
+
       </article>
     `;
-  }).join("") || "<p>В этой категории пока нет товаров.</p>";
+  }).join("");
 }
 
-async function openStoreProduct(id) {
+// Открываем товар
+function openStoreProduct(id) {
   selectedProduct = storeProducts.find(p => p.id === id);
 
-  const {data,error} = await storeDB
-    .from("product_variants")
-    .select("*")
-    .eq("product_id",id);
+  if (!selectedProduct) return;
 
-  if (error || !data.length) {
-    alert("У этого товара пока нет конфигураций.");
-    return;
-  }
-
-  const variants = data.filter(v => v.availability !== "out_of_stock");
+  const variants = window.storeVariants.filter(
+    v => v.product_id === id &&
+    v.availability !== "out_of_stock"
+  );
 
   if (!variants.length) {
-    alert("Сейчас товара нет в наличии.");
+    alert("Нет доступных конфигураций.");
     return;
   }
 
-  selectedVariant = variants[0];
-
   const modal = document.getElementById("productModal");
-
   modal.classList.remove("hidden");
 
   document.getElementById("modalTitle").textContent =
     selectedProduct.name;
 
-  document.getElementById("modalMemory").innerHTML =
-    [...new Set(variants.map(v=>v.memory).filter(Boolean))]
-      .map(v=>`<option>${safeText(v)}</option>`).join("");
-
-  document.getElementById("modalColor").innerHTML =
-    [...new Set(variants.map(v=>v.color).filter(Boolean))]
-      .map(v=>`<option>${safeText(v)}</option>`).join("");
-
-  document.getElementById("modalSim").innerHTML =
-    [...new Set(variants.map(v=>v.sim_type).filter(Boolean))]
-      .map(v=>`<option>${safeText(v)}</option>`).join("");
-
   modal.dataset.variants = JSON.stringify(variants);
 
-  ["modalMemory","modalColor","modalSim"].forEach(id => {
-    document.getElementById(id).onchange = updateStoreVariant;
+  const fields = [
+    ["modalMemory", "memory"],
+    ["modalColor", "color"],
+    ["modalSim", "sim_type"]
+  ];
+
+  fields.forEach(([elementId, field]) => {
+    const values = [...new Set(
+      variants.map(v => v[field]).filter(Boolean)
+    )];
+
+    const element = document.getElementById(elementId);
+
+    element.innerHTML = values.length
+      ? values.map(v =>
+          `<option value="${safeText(v)}">${safeText(v)}</option>`
+        ).join("")
+      : '<option value="">Не указано</option>';
+
+    element.onchange = updateStoreVariant;
   });
 
   updateStoreVariant();
 }
 
+// Обновление выбранной конфигурации
 function updateStoreVariant() {
-  const variants = JSON.parse(
-    document.getElementById("productModal").dataset.variants
-  );
+  const modal = document.getElementById("productModal");
+  const variants = JSON.parse(modal.dataset.variants || "[]");
 
   const memory = document.getElementById("modalMemory").value;
   const color = document.getElementById("modalColor").value;
@@ -193,8 +232,8 @@ function updateStoreVariant() {
 
   document.getElementById("modalPrice").textContent =
     selectedVariant
-      ? formatPrice(selectedVariant.price,selectedVariant.currency)
-      : "Такой комбинации нет";
+      ? formatPrice(selectedVariant.price, selectedVariant.currency)
+      : "Такая комбинация недоступна";
 
   document.getElementById("modalOrder").disabled =
     !selectedVariant;
@@ -204,34 +243,39 @@ function closeStoreProduct() {
   document.getElementById("productModal").classList.add("hidden");
 }
 
+// Отправка заявки
 async function submitStoreOrder() {
   if (!selectedProduct || !selectedVariant) return;
 
   const name = prompt("Как вас зовут?");
-  if (!name) return;
+  if (!name?.trim()) return;
 
   const contact = prompt("Ваш Telegram или телефон?");
-  if (!contact) return;
+  if (!contact?.trim()) return;
 
   const message = [
-    "НОВАЯ ЗАЯВКА — APPLE STORE",
+    "НОВАЯ ЗАЯВКА — APPLE SCHEMES",
     "Товар: " + selectedProduct.name,
     "Память: " + (selectedVariant.memory || "—"),
     "Цвет: " + (selectedVariant.color || "—"),
     "SIM: " + (selectedVariant.sim_type || "—"),
-    "Цена: " + formatPrice(selectedVariant.price,selectedVariant.currency),
+    "Цена: " + formatPrice(
+      selectedVariant.price,
+      selectedVariant.currency
+    ),
     "Имя: " + name,
     "Контакт: " + contact
   ].join("\n");
 
   try {
     await navigator.clipboard.writeText(message);
-    alert("Заявка скопирована. Вставьте её в чат менеджера.");
-  } catch(e) {
-    prompt("Скопируйте заявку:",message);
+    alert("Заявка скопирована. Отправьте её менеджеру в Telegram.");
+  } catch (error) {
+    prompt("Скопируйте текст заявки:", message);
   }
 
-  window.open("https://t.me/burya_24","_blank");
+  window.open("https://t.me/burya_24", "_blank");
 }
 
+// Запуск
 loadStore();
