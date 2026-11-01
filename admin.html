@@ -90,6 +90,39 @@ button:disabled{opacity:.5}
 </div>
 
 <div class="card">
+  <h2>📊 Управление прайсом Excel</h2>
+  <p class="small">
+    Скачивай текущий прайс, редактируй цены в Excel
+    и загружай обновлённый файл обратно.
+  </p>
+
+  <button type="button" onclick="ExcelManager.exportExcel()">
+    📥 Скачать прайс Excel
+  </button>
+
+  <label>Выбрать обновлённый Excel-файл</label>
+  <input
+    type="file"
+    id="excelFile"
+    accept=".xlsx,.xls"
+  >
+
+  <button
+    type="button"
+    onclick="
+      const file = document.getElementById('excelFile').files[0];
+      if (!file) {
+        alert('Сначала выбери Excel-файл');
+      } else {
+        ExcelManager.importExcel(file)
+          .catch(error => alert(error.message));
+      }
+    "
+  >
+    📤 Загрузить и обновить цены
+  </button>
+</div>
+<div class="card">
 <h2>Товары и цены</h2>
 <p class="small">Меняй цену прямо здесь. Сохранение обновляет базу магазина.</p>
 <div id="productsList">Загрузка...</div>
