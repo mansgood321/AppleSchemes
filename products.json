@@ -1,0 +1,91 @@
+
+{
+  "store": {
+    "name": "Apple Store",
+    "subtitle": "Техника Apple без лишних сложностей",
+    "manager": "burya_24",
+    "currency": "RUB",
+    "language": "ru"
+  },
+  "categories": [
+    "iPhone",
+    "iPad",
+    "MacBook",
+    "Apple Watch",
+    "AirPods",
+    "Аксессуары"
+  ],
+  "products": [
+    {
+      "category": "iPhone",
+      "name": "iPhone 15 Pro",
+      "variants": [
+        {"memory":"128 ГБ","color":"Natural Titanium","sim":"SIM + eSIM","price":null,"available":true},
+        {"memory":"256 ГБ","color":"Natural Titanium","sim":"SIM + eSIM","price":null,"available":true},
+        {"memory":"512 ГБ","color":"Blue Titanium","sim":"eSIM","price":null,"available":true}
+      ]
+    },
+    {
+      "category": "iPhone",
+      "name": "iPhone 15 Pro Max",
+      "variants": [
+        {"memory":"256 ГБ","color":"Natural Titanium","sim":"SIM + eSIM","price":null,"available":true},
+        {"memory":"512 ГБ","color":"Blue Titanium","sim":"eSIM","price":null,"available":true},
+        {"memory":"1 ТБ","color":"Black Titanium","sim":"eSIM","price":null,"available":true}
+      ]
+    },
+    {
+      "category": "iPhone",
+      "name": "iPhone 16 Pro",
+      "variants": [
+        {"memory":"128 ГБ","color":"Desert Titanium","sim":"eSIM","price":null,"available":true},
+        {"memory":"256 ГБ","color":"Black Titanium","sim":"SIM + eSIM","price":null,"available":true},
+        {"memory":"512 ГБ","color":"Natural Titanium","sim":"SIM + eSIM","price":null,"available":true}
+      ]
+    },
+    {
+      "category": "iPhone",
+      "name": "iPhone 16 Pro Max",
+      "variants": [
+        {"memory":"256 ГБ","color":"Desert Titanium","sim":"eSIM","price":null,"available":true},
+        {"memory":"512 ГБ","color":"Black Titanium","sim":"SIM + eSIM","price":null,"available":true},
+        {"memory":"1 ТБ","color":"Natural Titanium","sim":"SIM + eSIM","price":null,"available":true}
+      ]
+    },
+    {
+      "category": "iPhone",
+      "name": "iPhone 17 Pro",
+      "variants": [
+        {"memory":"256 ГБ","color":"Orange","sim":"eSIM","price":null,"available":true},
+        {"memory":"256 ГБ","color":"Silver","sim":"SIM + eSIM","price":null,"available":true},
+        {"memory":"512 ГБ","color":"Blue","sim":"SIM + eSIM","price":null,"available":true}
+      ]
+    },
+    {
+      "category": "iPhone",
+      "name": "iPhone 17 Pro Max",
+      "variants": [
+        {"memory":"256 ГБ","color":"Orange","sim":"SIM + eSIM","price":null,"available":true},
+        {"memory":"512 ГБ","color":"Silver","sim":"eSIM","price":null,"available":true},
+        {"memory":"1 ТБ","color":"Blue","sim":"SIM + eSIM","price":null,"available":true}
+      ]
+    },
+    {
+      "category": "iPhone",
+      "name": "iPhone 18 Pro",
+      "variants": [
+        {"memory":"256 ГБ","color":"Silver","sim":"eSIM","price":null,"available":true},
+        {"memory":"512 ГБ","color":"Blue","sim":"SIM + eSIM","price":null,"available":true}
+      ]
+    },
+    {
+      "category": "iPhone",
+      "name": "iPhone 18 Pro Max",
+      "variants": [
+        {"memory":"256 ГБ","color":"Silver","sim":"eSIM","price":null,"available":true},
+        {"memory":"512 ГБ","color":"Blue","sim":"SIM + eSIM","price":null,"available":true},
+        {"memory":"1 ТБ","color":"Black","sim":"SIM + eSIM","price":null,"available":true}
+      ]
+    }
+  ]
+}
