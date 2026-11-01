@@ -3,329 +3,375 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#f5f5f7">
-<title>Apple Store</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f7f7f5">
+<title>Apple Store — Premium</title>
+
 <style>
+:root{
+  --bg:#f7f7f5;
+  --white:#fff;
+  --black:#171717;
+  --gray:#858585;
+  --accent:#a78bfa;
+  --line:#eaeaea;
+  --radius:22px;
+}
 *{box-sizing:border-box}
-body{margin:0;background:#f5f5f7;color:#1d1d1f;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif}
-button,select,input,textarea{font:inherit}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--black);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+button,select{font:inherit}
 button{cursor:pointer}
-header{background:#fff;padding:17px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eee}
-.logo{font-size:21px;font-weight:750;letter-spacing:-1px}
-.logo span{color:#888}
-.settings{display:flex;gap:7px}
-.settings select{border:0;background:#f2f2f5;border-radius:10px;padding:8px;font-size:12px}
-main{max-width:760px;margin:auto;padding:18px}
-.hero{background:#171719;color:white;border-radius:23px;padding:28px 22px;margin-bottom:28px;overflow:hidden}
-.hero small{color:#aaa;letter-spacing:2px;text-transform:uppercase}
-.hero h1{font-size:32px;line-height:1.1;letter-spacing:-1.5px;margin:14px 0}
-.hero p{color:#c5c5ca;line-height:1.5;font-size:14px;max-width:300px}
-.primary{background:white;color:#171719;border:0;border-radius:12px;padding:13px 19px;font-weight:700;margin-top:12px}
-.section-title{font-size:22px;letter-spacing:-.6px;margin:25px 0 15px}
-.features{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:18px 0 30px}
-.feature{background:white;padding:13px 9px;border-radius:14px;text-align:center;font-size:12px;color:#666}
-.feature b{display:block;color:#222;font-size:14px;margin-bottom:5px}
-.categories{display:flex;gap:9px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none}
-.categories button{white-space:nowrap;border:0;background:#e6e6eb;border-radius:20px;padding:10px 16px;font-size:13px}
-.categories button.active{background:#1d1d1f;color:white}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.card{background:white;border-radius:17px;padding:13px;min-width:0}
-.photo{height:125px;border-radius:12px;background:#f6f6f8;display:grid;place-items:center;font-size:57px;margin-bottom:12px}
-.card h3{font-size:15px;margin:0 0 6px}
-.muted{font-size:12px;color:#888;line-height:1.5}
-.price{font-weight:750;margin:12px 0}
-.action{width:100%;background:#171719;color:white;border:0;border-radius:11px;padding:11px;font-size:13px;font-weight:650}
-.secondary{background:#e9e9ed;color:#222}
-.back{border:0;background:transparent;padding:8px 0;color:#666;margin-bottom:12px}
-.panel{background:white;border-radius:19px;padding:19px}
-.product-hero{height:190px;background:#f4f4f6;border-radius:16px;display:grid;place-items:center;font-size:90px;margin-bottom:18px}
-.product-name{font-size:25px;letter-spacing:-1px;margin:0 0 7px}
-label{display:block;font-size:13px;font-weight:650;margin:17px 0 7px}
-select,input,textarea{width:100%;padding:13px;border:1px solid #e1e1e5;border-radius:11px;background:white;color:#222}
-.current-price{font-size:24px;font-weight:750;margin:20px 0 8px}
-.note{font-size:12px;color:#888;line-height:1.5}
-form{background:white;border-radius:18px;padding:19px;margin-top:24px}
-form h2{margin-top:0}
-.submit{width:100%;background:#087cf0;color:white;border:0;border-radius:12px;padding:15px;font-weight:700;margin-top:19px}
-footer{text-align:center;padding:30px 10px;color:#999;font-size:12px}
+header{
+  height:65px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 6%;
+  background:rgba(255,255,255,.9);
+  border-bottom:1px solid var(--line);
+  position:sticky;
+  top:0;
+  z-index:10;
+  backdrop-filter:blur(15px);
+}
+.logo{
+  font-size:20px;
+  font-weight:800;
+  letter-spacing:-1px;
+}
+.logo span{color:#999}
+.header-right{display:flex;gap:9px}
+.header-right button{
+  border:0;
+  background:#f1f1ef;
+  border-radius:30px;
+  padding:9px 13px;
+  font-size:12px;
+}
+main{max-width:1100px;margin:auto;padding:24px 20px}
+.hero{
+  min-height:340px;
+  background:linear-gradient(125deg,#19191d,#34343b 65%,#514a62);
+  border-radius:30px;
+  color:white;
+  padding:48px;
+  display:flex;
+  align-items:center;
+  position:relative;
+  overflow:hidden;
+}
+.hero-content{position:relative;z-index:2;max-width:470px}
+.eyebrow{
+  font-size:11px;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  color:#c4b5fd;
+}
+.hero h1{
+  font-size:clamp(38px,7vw,65px);
+  line-height:.99;
+  letter-spacing:-3px;
+  margin:20px 0;
+}
+.hero p{color:#c8c8cf;line-height:1.7;font-size:15px}
+.hero button{
+  margin-top:18px;
+  padding:15px 23px;
+  border:0;
+  border-radius:30px;
+  background:white;
+  font-weight:700;
+}
+.hero-decoration{
+  position:absolute;
+  right:7%;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:clamp(100px,20vw,210px);
+  opacity:.18;
+  filter:grayscale(1);
+}
+.benefits{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:13px;
+  margin:22px 0 42px;
+}
+.benefit{
+  background:white;
+  padding:19px;
+  border-radius:17px;
+  font-size:13px;
+  color:#777;
+}
+.benefit b{display:block;color:#222;margin-bottom:6px;font-size:14px}
+.section-heading{
+  display:flex;
+  align-items:end;
+  justify-content:space-between;
+  margin:35px 0 17px;
+}
+.section-heading h2{
+  font-size:29px;
+  letter-spacing:-1.2px;
+  margin:0;
+}
+.section-heading p{font-size:12px;color:#999;margin:0}
+#categoryMenu{
+  display:flex;
+  gap:9px;
+  overflow-x:auto;
+  padding:3px 0 15px;
+  scrollbar-width:none;
+}
+.category-button{
+  flex-shrink:0;
+  padding:11px 18px;
+  border:1px solid #e6e6e6;
+  border-radius:30px;
+  background:white;
+  font-size:13px;
+  color:#555;
+}
+.category-button.active{
+  background:#191919;
+  color:white;
+  border-color:#191919;
+}
+#productList{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:17px;
+}
+.store-card{
+  background:white;
+  border-radius:22px;
+  padding:15px;
+  transition:transform .2s,box-shadow .2s;
+  min-width:0;
+}
+.store-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 12px 30px #0000000b;
+}
+.store-photo{
+  height:190px;
+  border-radius:16px;
+  background:linear-gradient(145deg,#f8f8f8,#ededed);
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  font-size:75px;
+  color:#aaa;
+}
+.store-photo img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  mix-blend-mode:multiply;
+}
+.store-card h3{
+  font-size:17px;
+  letter-spacing:-.4px;
+  margin:17px 0 7px;
+}
+.store-card p{font-size:12px;color:#999;min-height:28px}
+.store-price{font-size:17px;font-weight:750;margin:15px 0}
+.store-card button{
+  width:100%;
+  padding:13px;
+  border:0;
+  border-radius:13px;
+  background:#191919;
+  color:white;
+  font-weight:650;
+}
+.info{
+  margin-top:40px;
+  padding:30px;
+  background:#ece9e4;
+  border-radius:23px;
+}
+.info h2{font-size:25px;letter-spacing:-1px}
+.info p{font-size:14px;color:#777;line-height:1.7}
+footer{
+  text-align:center;
+  padding:35px 15px;
+  font-size:12px;
+  color:#999;
+}
 .hidden{display:none!important}
-.empty{background:white;border-radius:15px;padding:22px;text-align:center;color:#888;line-height:1.5}
-@media(max-width:380px){main{padding:13px}.hero h1{font-size:28px}.grid{gap:9px}.card{padding:10px}}
+#productModal{
+  position:fixed;
+  inset:0;
+  z-index:30;
+  background:#0008;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:15px;
+  backdrop-filter:blur(5px);
+}
+.modal-content{
+  width:100%;
+  max-width:440px;
+  max-height:90vh;
+  overflow:auto;
+  background:white;
+  border-radius:25px;
+  padding:25px;
+}
+.modal-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.modal-top h2{font-size:24px;letter-spacing:-1px}
+.close{
+  width:35px;height:35px;
+  border:0;border-radius:50%;
+  background:#eee;font-size:20px;
+}
+.modal-content label{
+  display:block;
+  font-size:12px;
+  font-weight:700;
+  margin:17px 0 7px;
+}
+.modal-content select{
+  width:100%;
+  border:1px solid #e5e5e5;
+  padding:13px;
+  border-radius:12px;
+  background:white;
+}
+#modalPrice{
+  font-size:25px;
+  font-weight:800;
+  margin:24px 0;
+}
+#modalOrder{
+  width:100%;
+  padding:15px;
+  background:#171717;
+  color:white;
+  border:0;
+  border-radius:13px;
+  font-weight:700;
+}
+#modalOrder:disabled{opacity:.4}
+@media(max-width:700px){
+  main{padding:16px 13px}
+  .hero{padding:30px 23px;min-height:320px}
+  .hero-decoration{right:-10px;opacity:.12}
+  .benefits{gap:8px}
+  .benefit{padding:13px 9px;font-size:11px}
+  .benefit b{font-size:12px}
+  #productList{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .store-card{padding:10px;border-radius:17px}
+  .store-photo{height:140px}
+  .store-card h3{font-size:14px}
+  .store-card button{font-size:12px;padding:12px 5px}
+  .section-heading h2{font-size:25px}
+}
+@media(max-width:360px){
+  .store-photo{height:115px}
+  .hero h1{font-size:37px}
+}
 </style>
 </head>
+
 <body>
 
 <header>
   <div class="logo">APPLE<span> STORE.</span></div>
-  <div class="settings">
-    <select aria-label="Язык" disabled><option>RU 🇷🇺</option></select>
-    <select aria-label="Валюта" disabled><option>RUB ₽</option></select>
+  <div class="header-right">
+    <button onclick="document.getElementById('catalog').scrollIntoView({behavior:'smooth'})">Каталог ↓</button>
+    <button onclick="window.open('https://t.me/burya_24','_blank')">Связаться ↗</button>
   </div>
 </header>
 
 <main>
-<section id="homeView">
-  <div class="hero">
-    <small>Добро пожаловать</small>
-    <h1>Технологии,<br>которые ближе.</h1>
-    <p>Оригинальная техника Apple. Выбирай модель, конфигурацию и оставляй заявку на покупку.</p>
-    <button class="primary" onclick="openCatalog()">Перейти в каталог →</button>
+  <section class="hero">
+    <div class="hero-content">
+      <div class="eyebrow">Apple Premium Collection</div>
+      <h1>Технологии.<br>Твой стиль.</h1>
+      <p>Выбирай устройства Apple, подбирай характеристики и оставляй заявку на покупку.</p>
+      <button onclick="document.getElementById('catalog').scrollIntoView({behavior:'smooth'})">
+        Открыть каталог →
+      </button>
+    </div>
+    <div class="hero-decoration"></div>
+  </section>
+
+  <div class="benefits">
+    <div class="benefit"><b>01 · Выбор</b>Подбор конфигурации</div>
+    <div class="benefit"><b>02 · Консультация</b>Личная связь с менеджером</div>
+    <div class="benefit"><b>03 · Заказ</b>Оформление заявки</div>
   </div>
 
-  <h2 class="section-title">Почему мы?</h2>
-  <div class="features">
-    <div class="feature"><b>🍏 Apple</b>Техника бренда</div>
-    <div class="feature"><b>💬 Связь</b>Лично с менеджером</div>
-    <div class="feature"><b>📦 Заказ</b>Подбор конфигурации</div>
-  </div>
+  <section id="catalog">
+    <div class="section-heading">
+      <div>
+        <p>APPLE COLLECTION</p>
+        <h2>Каталог</h2>
+      </div>
+      <p>Выбирай своё устройство</p>
+    </div>
 
-  <h2 class="section-title">Популярные категории</h2>
-  <div class="grid" id="homeCategories"></div>
-</section>
+    <div id="categoryMenu"></div>
+    <div id="productList">
+      <p>Загружаем каталог...</p>
+    </div>
+  </section>
 
-<section id="catalogView" class="hidden">
-  <button class="back" onclick="showView('homeView')">← Главная</button>
-  <h2 class="section-title">Каталог</h2>
-  <div class="categories" id="categoryButtons"></div>
-  <div class="grid" id="productGrid"></div>
-</section>
-
-<section id="productView" class="hidden">
-  <button class="back" onclick="openCatalog()">← Назад в каталог</button>
-  <div class="panel">
-    <div class="product-hero">📱</div>
-    <h1 class="product-name" id="productName"></h1>
-    <p class="muted">Выберите подходящую конфигурацию</p>
-
-    <label for="memory">Память</label>
-    <select id="memory"></select>
-
-    <label for="color">Цвет</label>
-    <select id="color"></select>
-
-    <label for="sim">SIM-карта</label>
-    <select id="sim"></select>
-
-    <div class="current-price" id="productPrice">Цена уточняется</div>
-    <p class="note" id="availability"></p>
-    <button class="action" id="orderButton" onclick="goToOrder()">Оформить заявку</button>
-  </div>
-
-  <form id="orderForm">
-    <h2>Оформление заявки</h2>
-    <p class="muted" id="orderSummary">Выбранная конфигурация появится здесь.</p>
-
-    <label for="customerName">Ваше имя</label>
-    <input id="customerName" required placeholder="Как к вам обращаться?">
-
-    <label for="customerContact">Контакт для связи</label>
-    <input id="customerContact" required placeholder="@username или телефон">
-
-    <label for="customerComment">Комментарий</label>
-    <textarea id="customerComment" rows="3" placeholder="Дополнительные пожелания"></textarea>
-
-    <button class="submit" type="submit">Отправить заявку в Telegram</button>
-    <p class="note">Заявка будет скопирована. Затем откроется чат с менеджером, куда нужно вставить и отправить сообщение.</p>
-  </form>
-</section>
+  <section class="info">
+    <p>APPLE STORE · НАША ФИЛОСОФИЯ</p>
+    <h2>Технологии должны быть удобными.</h2>
+    <p>Выбирай устройство, сравнивай конфигурации и отправляй заявку. Менеджер поможет уточнить наличие и детали заказа.</p>
+  </section>
 </main>
 
 <footer>
-  APPLE STORE · Техника Apple
+  APPLE STORE · Все права защищены
+  <br><br>
+  <a href="https://t.me/burya_24" style="color:inherit">Связаться с менеджером</a>
+  <br><br>
+  <a href="./admin.html" style="color:#aaa">Администратор</a>
 </footer>
 
-<script>
-let database;
-let activeCategory="iPhone";
-let activeProduct=null;
-let activeVariant=null;
+<div id="productModal" class="hidden">
+  <div class="modal-content">
+    <div class="modal-top">
+      <h2 id="modalTitle">Товар</h2>
+      <button class="close" onclick="closeStoreProduct()">×</button>
+    </div>
 
-const categoriesEmoji={
-"iPhone":"📱",
-"iPad":"📟",
-"MacBook":"💻",
-"Apple Watch":"⌚",
-"AirPods":"🎧",
-"Аксессуары":"🎁"
-};
+    <label>Память</label>
+    <select id="modalMemory"></select>
 
-const money=value=>Number(value).toLocaleString("ru-RU")+" ₽";
+    <label>Цвет</label>
+    <select id="modalColor"></select>
 
-function showView(id){
-["homeView","catalogView","productView"].forEach(x=>
-document.getElementById(x).classList.add("hidden"));
-document.getElementById(id).classList.remove("hidden");
-window.scrollTo({top:0,behavior:"smooth"});
-}
+    <label>Тип SIM</label>
+    <select id="modalSim"></select>
 
-async function loadDatabase(){
-try{
-const response=await fetch("./products.json");
-if(!response.ok)throw new Error("Database error");
-database=await response.json();
-document.querySelector(".logo").innerHTML=
-database.store.name.toUpperCase()+"<span>.</span>";
-renderHomeCategories();
-}catch(error){
-document.getElementById("homeView").innerHTML=
-'<div class="empty">Не удалось загрузить базу товаров. Проверь, что файл products.json сохранён в корне репозитория.</div>';
-}
-}
+    <div id="modalPrice">Цена уточняется</div>
 
-function renderHomeCategories(){
-const box=document.getElementById("homeCategories");
-box.innerHTML="";
-database.categories.forEach(category=>{
-const card=document.createElement("button");
-card.className="card";
-card.style.border="0";
-card.style.textAlign="left";
-card.innerHTML=
-'<div class="photo">'+(categoriesEmoji[category]||"🍏")+
-'</div><h3>'+category+'</h3><div class="muted">Перейти к товарам →</div>';
-card.onclick=()=>openCategory(category);
-box.appendChild(card);
-});
-}
+    <button id="modalOrder" onclick="submitStoreOrder()">
+      Оставить заявку
+    </button>
+  </div>
+</div>
 
-function openCatalog(){
-renderCatalog();
-showView("catalogView");
-}
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase-config.js"></script>
+<script src="./store.js"></script>
 
-function openCategory(category){
-activeCategory=category;
-openCatalog();
-}
-
-function renderCatalog(){
-const buttons=document.getElementById("categoryButtons");
-buttons.innerHTML="";
-database.categories.forEach(category=>{
-const b=document.createElement("button");
-b.textContent=category;
-b.className=category===activeCategory?"active":"";
-b.onclick=()=>{activeCategory=category;renderCatalog();};
-buttons.appendChild(b);
-});
-
-const grid=document.getElementById("productGrid");
-grid.innerHTML="";
-const items=database.products.filter(p=>p.category===activeCategory);
-
-if(!items.length){
-grid.innerHTML='<div class="empty" style="grid-column:1/-1">Скоро здесь появятся товары этой категории.</div>';
-return;
-}
-
-items.forEach(p=>{
-const card=document.createElement("div");
-card.className="card";
-card.innerHTML=
-'<div class="photo">'+(categoriesEmoji[p.category]||"🍏")+
-'</div><h3>'+p.name+'</h3><p class="muted">Выбор конфигурации и цвета</p>'+
-'<button class="action">Выбрать модель</button>';
-card.querySelector("button").onclick=()=>openProduct(p);
-grid.appendChild(card);
-});
-}
-
-function uniqueValues(variants,key){
-return [...new Set(variants.map(v=>v[key]))];
-}
-
-function fillSelect(id,values){
-const el=document.getElementById(id);
-el.innerHTML="";
-values.forEach(value=>{
-const option=document.createElement("option");
-option.value=value;
-option.textContent=value;
-el.appendChild(option);
-});
-}
-
-function openProduct(product){
-activeProduct=product;
-activeVariant=null;
-document.getElementById("productName").textContent=product.name;
-
-fillSelect("memory",uniqueValues(product.variants,"memory"));
-fillSelect("color",uniqueValues(product.variants,"color"));
-fillSelect("sim",uniqueValues(product.variants,"sim"));
-
-["memory","color","sim"].forEach(id=>{
-document.getElementById(id).onchange=updateVariant;
-});
-
-updateVariant();
-showView("productView");
-}
-
-function updateVariant(){
-const memory=document.getElementById("memory").value;
-const color=document.getElementById("color").value;
-const sim=document.getElementById("sim").value;
-
-activeVariant=activeProduct.variants.find(v=>
-v.memory===memory&&v.color===color&&v.sim===sim
-)||null;
-
-const price=document.getElementById("productPrice");
-const availability=document.getElementById("availability");
-const button=document.getElementById("orderButton");
-
-if(!activeVariant){
-price.textContent="Такой комбинации нет";
-availability.textContent="Выберите другую конфигурацию.";
-button.disabled=true;
-button.style.opacity=".5";
-}else{
-price.textContent=activeVariant.price!==null?money(activeVariant.price):"Цена уточняется";
-availability.textContent=activeVariant.available?"Можно оставить заявку на эту конфигурацию.":"Временно нет в наличии.";
-button.disabled=!activeVariant.available;
-button.style.opacity=button.disabled?".5":"1";
-}
-}
-
-function goToOrder(){
-if(!activeVariant)return;
-document.getElementById("orderSummary").textContent=
-activeProduct.name+" · "+activeVariant.memory+" · "+
-activeVariant.color+" · "+activeVariant.sim+
-" · "+(activeVariant.price!==null?money(activeVariant.price):"цена уточняется");
-document.getElementById("orderForm").scrollIntoView({behavior:"smooth"});
-}
-
-document.getElementById("orderForm").addEventListener("submit",async event=>{
-event.preventDefault();
-if(!activeProduct||!activeVariant)return;
-
-const price=activeVariant.price!==null?money(activeVariant.price):"уточняется";
-const message=[
-"ЗАЯВКА — APPLE STORE",
-"Товар: "+activeProduct.name,
-"Память: "+activeVariant.memory,
-"Цвет: "+activeVariant.color,
-"SIM: "+activeVariant.sim,
-"Цена: "+price,
-"Имя: "+document.getElementById("customerName").value,
-"Контакт: "+document.getElementById("customerContact").value,
-"Комментарий: "+(document.getElementById("customerComment").value||"нет")
-].join("\n");
-
-try{
-await navigator.clipboard.writeText(message);
-alert("Заявка скопирована! Сейчас откроется чат с менеджером. Вставьте сообщение и отправьте его.");
-window.location.href="https://t.me/"+database.store.manager;
-}catch(error){
-prompt("Скопируйте текст заявки и отправьте его менеджеру @"+database.store.manager,message);
-window.location.href="https://t.me/"+database.store.manager;
-}
-});
-
-loadDatabase();
-</script>
 </body>
 </html>
