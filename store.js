@@ -244,7 +244,47 @@ function closeStoreProduct() {
 }
 
 // Отправка заявки
+
 async function submitStoreOrder() {
+  if (!selectedProduct || !selectedVariant) {
+    alert("Сначала выберите товар и конфигурацию");
+    return;
+  }
+
+  const customer = prompt("Как вас зовут?");
+  if (!customer?.trim()) return;
+
+  const contact = prompt("Ваш Telegram или телефон?");
+  if (!contact?.trim()) return;
+
+  const message = {
+    product: selectedProduct.name,
+    memory: selectedVariant.memory || "—",
+    color: selectedVariant.color || "—",
+    sim: selectedVariant.sim_type || "—",
+    price: selectedVariant.price,
+    customer: customer.trim(),
+    contact: contact.trim()
+  };
+
+  try {
+    const { data, error } = await storeDB.functions.invoke(
+      "telegram-order",
+      { body: message }
+    );
+
+    if (error) throw error;
+    if (!data?.success) throw new Error("Заявка не отправлена");
+
+    alert("✅ Заявка успешно отправлена! Менеджер скоро свяжется с вами.");
+
+    closeStoreProduct();
+
+  } catch (error) {
+    console.error("Order error:", error);
+    alert("Не удалось отправить заявку. Попробуйте ещё раз.");
+  }
+}
   if (!selectedProduct || !selectedVariant) return;
 
   const name = prompt("Как вас зовут?");
