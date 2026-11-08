@@ -6,12 +6,12 @@ let storeCategories = [];
 let selectedProduct = null;
 let selectedVariant = null;
 let storeVariants = [];
+let currentAttributeFields = [];
+let currentCategoryId = null;
 
-// Элементы страницы
 const categoryMenu = document.getElementById("categoryMenu");
 const productList = document.getElementById("productList");
 
-// Защита текста при отображении
 function safeText(value) {
   return String(value ?? "").replace(/[&<>"']/g, c => ({
     "&": "&amp;",
@@ -22,7 +22,6 @@ function safeText(value) {
   })[c]);
 }
 
-// Форматирование цены
 function formatPrice(price, currency = "RUB") {
   if (price === null || price === undefined || price === "") {
     return "Цена уточняется";
@@ -38,6 +37,95 @@ function formatPrice(price, currency = "RUB") {
     " " + (symbols[currency] || currency);
 }
 
+// Получаем характеристики конкретной конфигурации
+function getVariantAttributes(variant) {
+  let attributes = variant.attributes || {};
+
+  if (typeof attributes === "string") {
+    try {
+      attributes = JSON.parse(attributes);
+    } catch {
+      attributes = {};
+    }
+  }
+
+  return {
+    ...attributes,
+    memory: attributes.memory ?? variant.memory ?? "",
+    color: attributes.color ?? variant.color ?? "",
+    sim_type: attributes.sim_type ?? variant.sim_type ?? ""
+  };
+}
+
+// Получаем настройки характеристик категории
+function getCategorySchema(category, variants) {
+  let schema = category?.attributes_schema || [];
+
+  if (typeof schema === "string") {
+    try {
+      schema = JSON.parse(schema);
+    } catch {
+      schema = [];
+    }
+  }
+
+  if (Array.isArray(schema) && schema.length) {
+    return schema
+      .filter(field => field && field.key)
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  }
+
+  // Совместимость со старыми товарами
+  const legacyFields = [
+    { key: "memory", label: "Память" },
+    { key: "color", label: "Цвет" },
+    { key: "sim_type", label: "Тип SIM" }
+  ];
+
+  return legacyFields.filter(field =>
+    variants.some(variant =>
+      getVariantAttributes(variant)[field.key]
+    )
+  );
+}
+
+// Создаём контейнер характеристик
+function prepareAttributeContainer() {
+  const modal = document.getElementById("productModal");
+  if (!modal) return null;
+
+  const content = modal.querySelector(".modal-content");
+  if (!content) return null;
+
+  // Удаляем старые жёстко заданные поля
+  ["modalMemory", "modalColor", "modalSim"].forEach(id => {
+    const element = document.getElementById(id);
+
+    if (element) {
+      const label = content.querySelector(`label[for="${id}"]`);
+      label?.remove();
+      element.remove();
+    }
+  });
+
+  let container = document.getElementById("modalAttributes");
+
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "modalAttributes";
+
+    const priceLabel = content.querySelector(".modal-price-label");
+
+    if (priceLabel) {
+      content.insertBefore(container, priceLabel);
+    } else {
+      content.appendChild(container);
+    }
+  }
+
+  return container;
+}
+
 // Загрузка каталога
 async function loadStore() {
   if (!categoryMenu || !productList) {
@@ -45,7 +133,9 @@ async function loadStore() {
     return;
   }
 
-  productList.innerHTML = "<p>Загружаем каталог...</p>";
+  productList.innerHTML = `
+    <div class="loading-state">Загружаем каталог...</div>
+  `;
 
   try {
     const [
@@ -53,9 +143,8 @@ async function loadStore() {
       productsResult,
       variantsResult
     ] = await Promise.all([
-
       storeDB.from("categories")
-        .select("id,name,slug,icon")
+        .select("*")
         .eq("active", true)
         .order("sort_order"),
 
@@ -99,9 +188,11 @@ async function loadStore() {
 
 // Отображение категорий
 function renderCategories() {
-  categoryMenu.innerHTML = storeCategories.map((category, index) => `
+  categoryMenu.innerHTML = storeCategories.map(category => `
     <button
-      class="category-button ${index === 0 ? "active" : ""}"
+      class="category-button ${
+        category.id === currentCategoryId ? "active" : ""
+      }"
       onclick="renderProducts('${category.id}', this)">
       ${safeText(category.icon || "🍏")}
       ${safeText(category.name)}
@@ -111,13 +202,18 @@ function renderCategories() {
 
 // Отображение товаров
 function renderProducts(categoryId, button) {
+  currentCategoryId = categoryId;
+
   document.querySelectorAll(".category-button")
     .forEach(item => item.classList.remove("active"));
 
   if (button) {
     button.classList.add("active");
   } else {
-    document.querySelector(".category-button")?.classList.add("active");
+    const activeButton = [...document.querySelectorAll(".category-button")]
+      .find(item => item.getAttribute("onclick")?.includes(categoryId));
+
+    activeButton?.classList.add("active");
   }
 
   const products = storeProducts.filter(
@@ -125,26 +221,41 @@ function renderProducts(categoryId, button) {
   );
 
   if (!products.length) {
-    productList.innerHTML = "<p>В этой категории пока нет товаров.</p>";
+    productList.innerHTML = `
+      <div class="loading-state">
+        В этой категории пока нет товаров.
+      </div>
+    `;
     return;
   }
 
   productList.innerHTML = products.map(product => {
     const variants = storeVariants.filter(
-      variant => variant.product_id === product.id &&
+      variant =>
+        variant.product_id === product.id &&
         variant.availability !== "out_of_stock"
     );
 
-    const prices = variants
-      .filter(variant => variant.price !== null)
-      .map(variant => Number(variant.price));
+    const availablePrices = variants.filter(
+      variant => variant.price !== null
+    );
 
-    const lowestPrice = prices.length
-      ? Math.min(...prices)
-      : null;
+    let priceText = "Цена уточняется";
 
-    const currency =
-      variants.find(v => v.price !== null)?.currency || "RUB";
+    if (availablePrices.length) {
+      const currency = availablePrices[0].currency || "RUB";
+
+      const sameCurrencyPrices = availablePrices
+        .filter(v => (v.currency || "RUB") === currency)
+        .map(v => Number(v.price));
+
+      if (sameCurrencyPrices.length) {
+        priceText = "от " + formatPrice(
+          Math.min(...sameCurrencyPrices),
+          currency
+        );
+      }
+    }
 
     return `
       <article class="store-card">
@@ -158,12 +269,12 @@ function renderProducts(categoryId, button) {
 
         <h3>${safeText(product.name)}</h3>
 
-        <p>${safeText(product.description || "Выберите конфигурацию")}</p>
+        <p>
+          ${safeText(product.description || "Выберите конфигурацию")}
+        </p>
 
         <div class="store-price">
-          ${lowestPrice !== null
-            ? "от " + formatPrice(lowestPrice, currency)
-            : "Цена уточняется"}
+          ${priceText}
         </div>
 
         <button onclick="openStoreProduct('${product.id}')">
@@ -177,13 +288,14 @@ function renderProducts(categoryId, button) {
 
 // Открытие товара
 function openStoreProduct(id) {
-  selectedProduct = storeProducts.find(p => p.id === id);
+  selectedProduct = storeProducts.find(product => product.id === id);
 
   if (!selectedProduct) return;
 
   const variants = storeVariants.filter(
-    v => v.product_id === id &&
-      v.availability !== "out_of_stock"
+    variant =>
+      variant.product_id === id &&
+      variant.availability !== "out_of_stock"
   );
 
   if (!variants.length) {
@@ -198,57 +310,121 @@ function openStoreProduct(id) {
     return;
   }
 
+  const title = document.getElementById("modalTitle");
+
+  if (title) {
+    title.textContent = selectedProduct.name;
+  }
+
   modal.classList.remove("hidden");
-  document.getElementById("modalTitle").textContent =
-    selectedProduct.name;
 
-  modal.dataset.variants = JSON.stringify(variants);
+  selectedVariant = null;
 
-  const fields = [
-    ["modalMemory", "memory"],
-    ["modalColor", "color"],
-    ["modalSim", "sim_type"]
-  ];
+  const category = storeCategories.find(
+    item => item.id === selectedProduct.category_id
+  );
 
-  fields.forEach(([elementId, field]) => {
-    const element = document.getElementById(elementId);
-    if (!element) return;
+  currentAttributeFields = getCategorySchema(category, variants);
 
-    const values = [...new Set(
-      variants.map(v => v[field]).filter(Boolean)
-    )];
+  const container = prepareAttributeContainer();
 
-    element.innerHTML = values.length
-      ? values.map(v =>
-          `<option value="${safeText(v)}">${safeText(v)}</option>`
-        ).join("")
-      : '<option value="">Не указано</option>';
+  if (!container) return;
 
-    element.onchange = updateStoreVariant;
+  container.innerHTML = "";
+
+  const firstVariantAttributes = getVariantAttributes(variants[0]);
+
+  currentAttributeFields.forEach(field => {
+    const key = field.key;
+    const label = field.label || key;
+
+    const values = [
+      ...new Set(
+        variants
+          .map(variant => getVariantAttributes(variant)[key])
+          .filter(value => value !== null &&
+            value !== undefined &&
+            String(value).trim() !== "")
+          .map(value => String(value))
+      )
+    ];
+
+    // Если значений нет в вариантах, используем настройки категории
+    const options = values.length
+      ? values
+      : (Array.isArray(field.options) ? field.options : []);
+
+    if (!options.length) return;
+
+    const initialValue = String(
+      firstVariantAttributes[key] ?? options[0]
+    );
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "modal-attribute";
+
+    const fieldLabel = document.createElement("label");
+    fieldLabel.textContent = label;
+
+    const select = document.createElement("select");
+    select.dataset.attributeKey = key;
+
+    select.innerHTML = options.map(value => `
+      <option value="${safeText(value)}"
+        ${String(value) === initialValue ? "selected" : ""}>
+        ${safeText(value)}
+      </option>
+    `).join("");
+
+    select.addEventListener("change", updateStoreVariant);
+
+    wrapper.appendChild(fieldLabel);
+    wrapper.appendChild(select);
+    container.appendChild(wrapper);
   });
 
   updateStoreVariant();
 }
 
-// Обновление конфигурации
+// Читаем выбранные покупателем характеристики
+function getSelectedAttributes() {
+  const container = document.getElementById("modalAttributes");
+
+  if (!container) return {};
+
+  const attributes = {};
+
+  container.querySelectorAll("select[data-attribute-key]")
+    .forEach(select => {
+      attributes[select.dataset.attributeKey] = select.value;
+    });
+
+  return attributes;
+}
+
+// Обновление цены и выбранной конфигурации
 function updateStoreVariant() {
-  const modal = document.getElementById("productModal");
-  if (!modal) return;
-
-  const variants = JSON.parse(modal.dataset.variants || "[]");
-
-  const memory = document.getElementById("modalMemory")?.value || "";
-  const color = document.getElementById("modalColor")?.value || "";
-  const sim = document.getElementById("modalSim")?.value || "";
-
-  selectedVariant = variants.find(v =>
-    (v.memory || "") === memory &&
-    (v.color || "") === color &&
-    (v.sim_type || "") === sim
-  );
-
+  const container = document.getElementById("modalAttributes");
   const priceElement = document.getElementById("modalPrice");
   const orderButton = document.getElementById("modalOrder");
+
+  if (!container) return;
+
+  const attributes = getSelectedAttributes();
+
+  const variants = storeVariants.filter(
+    variant =>
+      variant.product_id === selectedProduct?.id &&
+      variant.availability !== "out_of_stock"
+  );
+
+  selectedVariant = variants.find(variant => {
+    const variantAttributes = getVariantAttributes(variant);
+
+    return Object.entries(attributes).every(([key, value]) =>
+      String(variantAttributes[key] ?? "") === String(value)
+    );
+  }) || null;
 
   if (priceElement) {
     priceElement.textContent = selectedVariant
@@ -282,12 +458,22 @@ async function submitStoreOrder() {
   const contact = prompt("Ваш Telegram или телефон?");
   if (!contact?.trim()) return;
 
+  const attributes = getVariantAttributes(selectedVariant);
+
   const message = {
     product: selectedProduct.name,
-    memory: selectedVariant.memory || "—",
-    color: selectedVariant.color || "—",
-    sim: selectedVariant.sim_type || "—",
+
+    // Старые поля сохраняем для совместимости
+    memory: attributes.memory || "—",
+    color: attributes.color || "—",
+    sim: attributes.sim_type || "—",
+
+    // Новые динамические характеристики
+    attributes: attributes,
+
     price: selectedVariant.price,
+    currency: selectedVariant.currency || "RUB",
+
     customer: customer.trim(),
     contact: contact.trim()
   };
