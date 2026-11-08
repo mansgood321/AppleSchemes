@@ -1,12 +1,16 @@
 
 const db = supabaseClient;
 
-const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
 
 let categories = [];
 let products = [];
 let variants = [];
 let editingCategoryId = null;
+
+// --------------------------------------------------
+// ОБЩИЕ ФУНКЦИИ
+// --------------------------------------------------
 
 function notify(message, error = false) {
     const box = $("message");
@@ -31,6 +35,7 @@ function escapeHTML(value = "") {
 
 function safeJSON(value) {
     if (Array.isArray(value)) return value;
+
     if (typeof value === "string") {
         try {
             const parsed = JSON.parse(value);
@@ -39,6 +44,7 @@ function safeJSON(value) {
             return [];
         }
     }
+
     return [];
 }
 
@@ -53,13 +59,21 @@ function getAttributes(variant) {
     };
 }
 
+function getCategory(id) {
+    return categories.find(category => category.id === id);
+}
+
 // --------------------------------------------------
 // АВТОРИЗАЦИЯ
 // --------------------------------------------------
 
 async function checkAdmin() {
     try {
-        const { data: sessionData } = await db.auth.getSession();
+        const { data: sessionData, error: sessionError } =
+            await db.auth.getSession();
+
+        if (sessionError) throw sessionError;
+
         const session = sessionData.session;
 
         if (!session) {
@@ -82,6 +96,7 @@ async function checkAdmin() {
         $("logout")?.classList.remove("hidden");
 
         await loadAll();
+
     } catch (error) {
         notify("Ошибка авторизации: " + error.message, true);
     }
@@ -118,10 +133,10 @@ $("refresh")?.addEventListener("click", loadAll);
 // --------------------------------------------------
 
 async function loadAll() {
-    await Promise.all([
-        loadCategories(),
-        loadProducts()
-    ]);
+    // Сначала категории, затем товары.
+    // Так характеристики доступны при отображении конфигураций.
+    await loadCategories();
+    await loadProducts();
 }
 
 async function loadCategories() {
@@ -131,7 +146,7 @@ async function loadCategories() {
         .order("sort_order", { ascending: true });
 
     if (error) {
-        notify("Не удалось загрузить категории: " + error.message, true);
+        notify("Ошибка загрузки категорий: " + error.message, true);
         return;
     }
 
@@ -148,7 +163,7 @@ async function loadProducts() {
         .order("sort_order", { ascending: true });
 
     if (error) {
-        notify("Не удалось загрузить товары: " + error.message, true);
+        notify("Ошибка загрузки товаров: " + error.message, true);
         return;
     }
 
@@ -160,7 +175,7 @@ async function loadProducts() {
         .order("created_at", { ascending: true });
 
     if (variantError) {
-        notify("Не удалось загрузить варианты: " + variantError.message, true);
+        notify("Ошибка загрузки конфигураций: " + variantError.message, true);
         return;
     }
 
@@ -170,7 +185,7 @@ async function loadProducts() {
 }
 
 // --------------------------------------------------
-// ЗАГРУЗКА ФОТОГРАФИЙ
+// ФОТОГРАФИИ И STORAGE
 // --------------------------------------------------
 
 async function uploadImage(file, folder = "products") {
@@ -197,7 +212,9 @@ async function uploadImage(file, folder = "products") {
     if (!user) throw new Error("Необходимо войти в аккаунт.");
 
     const extension = file.name.split(".").pop().toLowerCase();
-    const path = `${folder}/${user.id}/${crypto.randomUUID()}.${extension}`;
+
+    const path =
+        `${folder}/${user.id}/${crypto.randomUUID()}.${extension}`;
 
     const { error } = await db.storage
         .from("product-images")
@@ -227,11 +244,14 @@ function getStoragePath(url) {
 
 async function deleteOldImage(url) {
     const path = getStoragePath(url);
+
     if (!path) return;
 
-    await db.storage
+    const { error } = await db.storage
         .from("product-images")
         .remove([path]);
+
+    if (error) console.warn("Не удалось удалить старую фотографию:", error);
 }
 
 // --------------------------------------------------
@@ -246,9 +266,12 @@ function fillCategorySelect() {
 
     select.innerHTML = `
         <option value="">Выбери категорию</option>
+
         ${categories.map(category => `
-            <option value="${category.id}">
+            <option value="${category.id}"
+                ${!category.active ? "disabled" : ""}>
                 ${escapeHTML(category.name)}
+                ${category.active ? "" : " (скрыта)"}
             </option>
         `).join("")}
     `;
@@ -275,6 +298,7 @@ function renderCategories() {
                         ${escapeHTML(category.icon || "🍏")}
                         ${escapeHTML(category.name)}
                     </strong>
+
                     <div class="small">
                         ${escapeHTML(category.slug)}
                         · ${category.active ? "В магазине" : "Скрыта"}
@@ -303,7 +327,7 @@ $("categoryForm")?.addEventListener("submit", async event => {
         const name = $("categoryName").value.trim();
         const slug = $("categorySlug").value.trim().toLowerCase();
         const icon = $("categoryIcon").value.trim();
-        const file = $("categoryImage").files[0];
+        const file = $("categoryImage")?.files[0];
 
         if (!name || !slug) {
             notify("Заполни название и идентификатор.", true);
@@ -330,7 +354,8 @@ $("categoryForm")?.addEventListener("submit", async event => {
         $("categoryForm").reset();
 
         notify("Категория создана.");
-        await loadCategories();
+
+        await loadAll();
 
     } catch (error) {
         notify("Ошибка создания категории: " + error.message, true);
@@ -338,22 +363,20 @@ $("categoryForm")?.addEventListener("submit", async event => {
 });
 
 // --------------------------------------------------
-// РЕДАКТОР КАТЕГОРИИ И ЕЁ ХАРАКТЕРИСТИК
+// РЕДАКТОР КАТЕГОРИИ
 // --------------------------------------------------
 
 function openCategoryEditor(id) {
-    const category = categories.find(item => item.id === id);
+    const category = getCategory(id);
     if (!category) return;
 
     editingCategoryId = id;
 
     const schema = safeJSON(category.attributes_schema);
-    const editor = $("categoryEditor");
-    const content = $("categoryEditorContent");
 
-    editor.classList.remove("hidden");
+    $("categoryEditor").classList.remove("hidden");
 
-    content.innerHTML = `
+    $("categoryEditorContent").innerHTML = `
         <form id="editCategoryForm">
 
             <label>Название</label>
@@ -368,7 +391,7 @@ function openCategoryEditor(id) {
             <input id="editCategoryIcon"
                 value="${escapeHTML(category.icon || "")}">
 
-            <label>Новое изображение категории</label>
+            <label>Изображение категории</label>
             <input id="editCategoryImage" type="file" accept="image/*">
 
             <label>Порядок отображения</label>
@@ -383,6 +406,7 @@ function openCategoryEditor(id) {
             </label>
 
             <button type="submit">Сохранить категорию</button>
+
             <button type="button" class="danger"
                 id="deleteCategoryButton">
                 Удалить категорию
@@ -392,9 +416,11 @@ function openCategoryEditor(id) {
         <hr>
 
         <h3>Характеристики категории</h3>
+
         <p class="small">
-            Задай параметры, которые покупатель сможет выбирать.
-            Например: память, цвет, процессор, размер корпуса.
+            Добавь параметры, которые будут доступны у товаров
+            этой категории. Например, для MacBook — процессор,
+            оперативная память и накопитель.
         </p>
 
         <div id="schemaFields"></div>
@@ -411,14 +437,19 @@ function openCategoryEditor(id) {
     renderSchemaFields(schema);
 
     $("editCategoryForm").addEventListener("submit", saveCategory);
+
     $("deleteCategoryButton").addEventListener("click", deleteCategory);
-    $("addSchemaField").addEventListener("click", () => {
-        addSchemaField();
-    });
+
+    $("addSchemaField").addEventListener("click", addSchemaField);
+
     $("saveSchema").addEventListener("click", saveCategorySchema);
 
-    editor.scrollIntoView({ behavior: "smooth" });
+    $("categoryEditor").scrollIntoView({ behavior: "smooth" });
 }
+
+// --------------------------------------------------
+// КОНСТРУКТОР ХАРАКТЕРИСТИК
+// --------------------------------------------------
 
 function renderSchemaFields(schema) {
     const container = $("schemaFields");
@@ -434,24 +465,27 @@ function renderSchemaFields(schema) {
 
     container.innerHTML = schema.map((field, index) => `
         <div class="schema-field" data-schema-index="${index}">
+
             <div class="row">
                 <div>
-                    <label>Название</label>
+                    <label>Название характеристики</label>
                     <input data-field="label"
-                        value="${escapeHTML(field.label || "")}">
+                        value="${escapeHTML(field.label || "")}"
+                        placeholder="Например, Оперативная память">
                 </div>
 
                 <div>
-                    <label>Ключ (латиницей)</label>
+                    <label>Ключ на английском</label>
                     <input data-field="key"
-                        value="${escapeHTML(field.key || "")}">
+                        value="${escapeHTML(field.key || "")}"
+                        placeholder="Например, ram">
                 </div>
             </div>
 
             <label>Варианты значений через запятую</label>
             <input data-field="options"
                 value="${escapeHTML((field.options || []).join(", "))}"
-                placeholder="Например: 256 ГБ, 512 ГБ, 1 ТБ">
+                placeholder="8 ГБ, 16 ГБ, 24 ГБ">
 
             <label>Тип характеристики</label>
             <select data-field="type">
@@ -459,6 +493,7 @@ function renderSchemaFields(schema) {
                     ${field.type === "select" ? "selected" : ""}>
                     Выбор из списка
                 </option>
+
                 <option value="text"
                     ${field.type === "text" ? "selected" : ""}>
                     Свободный текст
@@ -481,35 +516,17 @@ function renderSchemaFields(schema) {
 
     container.querySelectorAll("[data-remove-schema]").forEach(button => {
         button.addEventListener("click", () => {
-            const index = Number(button.dataset.removeSchema);
-            schema.splice(index, 1);
+            const schema = readSchemaFields();
+            schema.splice(Number(button.dataset.removeSchema), 1);
             renderSchemaFields(schema);
         });
     });
 }
 
-function addSchemaField() {
-    const container = $("schemaFields");
-
-    if (!container) return;
-
-    const schema = readSchemaFields();
-
-    schema.push({
-        key: "",
-        label: "",
-        type: "select",
-        options: [],
-        required: false,
-        sort_order: schema.length + 1
-    });
-
-    renderSchemaFields(schema);
-}
-
 function readSchemaFields() {
     return [...document.querySelectorAll(".schema-field")].map((element, index) => {
-        const get = name => element.querySelector(`[data-field="${name}"]`);
+        const get = name =>
+            element.querySelector(`[data-field="${name}"]`);
 
         return {
             key: get("key").value.trim(),
@@ -525,6 +542,21 @@ function readSchemaFields() {
     });
 }
 
+function addSchemaField() {
+    const schema = readSchemaFields();
+
+    schema.push({
+        key: "",
+        label: "",
+        type: "select",
+        options: [],
+        required: false,
+        sort_order: schema.length + 1
+    });
+
+    renderSchemaFields(schema);
+}
+
 async function saveCategorySchema() {
     const schema = readSchemaFields();
 
@@ -535,7 +567,12 @@ async function saveCategorySchema() {
         }
 
         if (!/^[a-z][a-z0-9_]*$/.test(field.key)) {
-            notify("Ключ должен быть латиницей: например, storage или chip.", true);
+            notify("Ключ должен быть латиницей, например ram или storage.", true);
+            return;
+        }
+
+        if (field.type === "select" && field.options.length === 0) {
+            notify(`Добавь варианты значений для «${field.label}».`, true);
             return;
         }
     }
@@ -558,15 +595,22 @@ async function saveCategorySchema() {
     }
 
     notify("Характеристики категории сохранены.");
+
     await loadCategories();
+    await loadProducts();
+
     openCategoryEditor(editingCategoryId);
 }
+
+// --------------------------------------------------
+// СОХРАНЕНИЕ КАТЕГОРИИ
+// --------------------------------------------------
 
 async function saveCategory(event) {
     event.preventDefault();
 
     try {
-        const category = categories.find(item => item.id === editingCategoryId);
+        const category = getCategory(editingCategoryId);
         if (!category) return;
 
         const file = $("editCategoryImage").files[0];
@@ -597,7 +641,8 @@ async function saveCategory(event) {
         }
 
         notify("Категория обновлена.");
-        await loadCategories();
+
+        await loadAll();
         openCategoryEditor(editingCategoryId);
 
     } catch (error) {
@@ -605,8 +650,12 @@ async function saveCategory(event) {
     }
 }
 
+// --------------------------------------------------
+// УДАЛЕНИЕ КАТЕГОРИИ С СОХРАНЕНИЕМ ТОВАРОВ
+// --------------------------------------------------
+
 async function deleteCategory() {
-    const category = categories.find(item => item.id === editingCategoryId);
+    const category = getCategory(editingCategoryId);
     if (!category) return;
 
     const { count, error: countError } = await db
@@ -619,16 +668,13 @@ async function deleteCategory() {
         return;
     }
 
-    if (count > 0) {
-        alert(
-            `В категории «${category.name}» находится ${count} товар(ов).\n\n` +
-            "Сначала перемести товары в другую категорию или удали их. " +
-            "Категория не удалена."
-        );
-        return;
-    }
+    const productCount = count || 0;
 
-    if (!confirm(`Удалить категорию «${category.name}»?`)) return;
+    const message = productCount > 0
+        ? `В категории «${category.name}» находится ${productCount} товаров.\n\nКатегория будет удалена, но сами товары сохранятся без категории. Продолжить?`
+        : `Удалить категорию «${category.name}»?`;
+
+    if (!confirm(message)) return;
 
     const { error } = await db
         .from("categories")
@@ -636,15 +682,16 @@ async function deleteCategory() {
         .eq("id", category.id);
 
     if (error) {
-        notify("Ошибка удаления: " + error.message, true);
+        notify("Ошибка удаления категории: " + error.message, true);
         return;
     }
 
     $("categoryEditor").classList.add("hidden");
     editingCategoryId = null;
 
-    notify("Категория удалена.");
-    await loadCategories();
+    notify("Категория удалена. Товары сохранены.");
+
+    await loadAll();
 }
 
 // --------------------------------------------------
@@ -679,6 +726,7 @@ $("productForm")?.addEventListener("submit", async event => {
         $("productForm").reset();
 
         notify("Товар создан. Теперь добавь его конфигурации.");
+
         await loadProducts();
 
     } catch (error) {
@@ -687,12 +735,8 @@ $("productForm")?.addEventListener("submit", async event => {
 });
 
 // --------------------------------------------------
-// ТОВАРЫ И ВАРИАНТЫ
+// ОТОБРАЖЕНИЕ ТОВАРОВ
 // --------------------------------------------------
-
-function getCategory(id) {
-    return categories.find(category => category.id === id);
-}
 
 function renderProducts() {
     const container = $("productsList");
@@ -707,12 +751,16 @@ function renderProducts() {
 
     container.innerHTML = products.map(product => {
         const category = getCategory(product.category_id);
-        const productVariants = variants.filter(v => v.product_id === product.id);
+
+        const productVariants = variants.filter(
+            variant => variant.product_id === product.id
+        );
 
         return `
             <div class="product" data-product="${product.id}">
 
                 <div class="row" style="align-items:flex-start">
+
                     ${product.image_url ? `
                         <img class="preview-image"
                             src="${escapeHTML(product.image_url)}"
@@ -721,10 +769,12 @@ function renderProducts() {
 
                     <div>
                         <h3>${escapeHTML(product.name)}</h3>
+
                         <div class="small">
                             ${escapeHTML(category?.name || "Без категории")}
                             · ${escapeHTML(product.model || "")}
                         </div>
+
                         <div class="small">
                             ${product.active ? "В магазине" : "Скрыт"}
                         </div>
@@ -745,10 +795,11 @@ function renderProducts() {
                     <label>Категория</label>
                     <select data-product-edit="category">
                         <option value="">Без категории</option>
-                        ${categories.map(c => `
-                            <option value="${c.id}"
-                                ${c.id === product.category_id ? "selected" : ""}>
-                                ${escapeHTML(c.name)}
+
+                        ${categories.map(categoryItem => `
+                            <option value="${categoryItem.id}"
+                                ${categoryItem.id === product.category_id ? "selected" : ""}>
+                                ${escapeHTML(categoryItem.name)}
                             </option>
                         `).join("")}
                     </select>
@@ -756,7 +807,7 @@ function renderProducts() {
                     <label>Описание</label>
                     <textarea data-product-edit="description" rows="3">${escapeHTML(product.description || "")}</textarea>
 
-                    <label>Порядок</label>
+                    <label>Порядок отображения</label>
                     <input data-product-edit="sort_order" type="number"
                         value="${product.sort_order ?? 0}">
 
@@ -779,11 +830,9 @@ function renderProducts() {
 
                 <h3>Конфигурации (${productVariants.length})</h3>
 
-                <div>
-                    ${productVariants.map(variant =>
-                        renderVariant(product, variant)
-                    ).join("")}
-                </div>
+                ${productVariants.map(variant =>
+                    renderVariant(product, variant)
+                ).join("")}
 
                 <details>
                     <summary>＋ Добавить конфигурацию</summary>
@@ -801,25 +850,39 @@ function renderProducts() {
     }).join("");
 
     container.querySelectorAll("[data-save-product]").forEach(button => {
-        button.addEventListener("click", () => saveProduct(button.dataset.saveProduct));
+        button.addEventListener("click", () =>
+            saveProduct(button.dataset.saveProduct)
+        );
     });
 
     container.querySelectorAll("[data-save-variant]").forEach(button => {
-        button.addEventListener("click", () => saveVariant(button.dataset.saveVariant));
+        button.addEventListener("click", () =>
+            saveVariant(button.dataset.saveVariant)
+        );
     });
 
     container.querySelectorAll("[data-delete-variant]").forEach(button => {
-        button.addEventListener("click", () => deleteVariant(button.dataset.deleteVariant));
+        button.addEventListener("click", () =>
+            deleteVariant(button.dataset.deleteVariant)
+        );
     });
 
     container.querySelectorAll("[data-add-variant]").forEach(button => {
-        button.addEventListener("click", () => addVariant(button.dataset.addVariant));
+        button.addEventListener("click", () =>
+            addVariant(button.dataset.addVariant)
+        );
     });
 
     container.querySelectorAll("[data-delete-product]").forEach(button => {
-        button.addEventListener("click", () => deleteProduct(button.dataset.deleteProduct));
+        button.addEventListener("click", () =>
+            deleteProduct(button.dataset.deleteProduct)
+        );
     });
 }
+
+// --------------------------------------------------
+// ОТОБРАЖЕНИЕ КОНФИГУРАЦИЙ
+// --------------------------------------------------
 
 function renderVariant(product, variant) {
     const category = getCategory(product.category_id);
@@ -828,13 +891,16 @@ function renderVariant(product, variant) {
 
     return `
         <div class="variant" data-variant="${variant.id}">
+
             <strong>Конфигурация</strong>
 
             ${schema.map(field => `
                 <label>${escapeHTML(field.label)}</label>
+
                 ${field.type === "select" ? `
                     <select data-attribute="${escapeHTML(field.key)}">
                         <option value="">Не указано</option>
+
                         ${(field.options || []).map(option => `
                             <option value="${escapeHTML(option)}"
                                 ${attributes[field.key] === option ? "selected" : ""}>
@@ -877,17 +943,24 @@ function renderVariant(product, variant) {
     `;
 }
 
+// --------------------------------------------------
+// ФОРМА ДОБАВЛЕНИЯ КОНФИГУРАЦИИ
+// --------------------------------------------------
+
 function renderAddVariantForm(product) {
     const category = getCategory(product.category_id);
     const schema = safeJSON(category?.attributes_schema);
 
     return `
         <div class="variant">
+
             ${schema.map(field => `
                 <label>${escapeHTML(field.label)}</label>
+
                 ${field.type === "select" ? `
                     <select data-new-attribute="${escapeHTML(field.key)}">
                         <option value="">Выбери значение</option>
+
                         ${(field.options || []).map(option => `
                             <option value="${escapeHTML(option)}">
                                 ${escapeHTML(option)}
@@ -934,6 +1007,7 @@ async function saveProduct(id) {
 
     try {
         const file = card.querySelector('[data-product-edit="image"]').files[0];
+
         let imageUrl = product.image_url;
 
         if (file) imageUrl = await uploadImage(file);
@@ -948,6 +1022,11 @@ async function saveProduct(id) {
             image_url: imageUrl
         };
 
+        if (!updates.name) {
+            notify("Название товара не может быть пустым.", true);
+            return;
+        }
+
         const { error } = await db
             .from("products")
             .update(updates)
@@ -960,7 +1039,8 @@ async function saveProduct(id) {
         }
 
         notify("Товар обновлён.");
-        await loadProducts();
+
+        await loadAll();
 
     } catch (error) {
         notify("Ошибка сохранения товара: " + error.message, true);
@@ -968,11 +1048,12 @@ async function saveProduct(id) {
 }
 
 // --------------------------------------------------
-// СОХРАНЕНИЕ И СОЗДАНИЕ ВАРИАНТОВ
+// СОХРАНЕНИЕ СУЩЕСТВУЮЩЕЙ КОНФИГУРАЦИИ
 // --------------------------------------------------
 
 async function saveVariant(id) {
     const variant = variants.find(item => item.id === id);
+
     const element = document.querySelector(`[data-variant="${id}"]`);
 
     if (!variant || !element) return;
@@ -985,22 +1066,24 @@ async function saveVariant(id) {
         }
     });
 
+    const priceValue = element.querySelector("[data-variant-price]").value;
+
+    const price = priceValue === "" ? null : Number(priceValue);
+
+    if (price !== null && (!Number.isFinite(price) || price < 0)) {
+        notify("Укажи корректную цену.", true);
+        return;
+    }
+
     const updates = {
         attributes,
         memory: attributes.memory || null,
         color: attributes.color || null,
         sim_type: attributes.sim_type || null,
-        price: element.querySelector("[data-variant-price]").value === ""
-            ? null
-            : Number(element.querySelector("[data-variant-price]").value),
+        price,
         currency: element.querySelector("[data-variant-currency]").value,
         availability: element.querySelector("[data-variant-availability]").value
     };
-
-    if (updates.price !== null && (!Number.isFinite(updates.price) || updates.price < 0)) {
-        notify("Укажи корректную цену.", true);
-        return;
-    }
 
     const { error } = await db
         .from("product_variants")
@@ -1013,14 +1096,23 @@ async function saveVariant(id) {
     }
 
     notify("Конфигурация сохранена.");
+
     await loadProducts();
 }
+
+// --------------------------------------------------
+// ДОБАВЛЕНИЕ КОНФИГУРАЦИИ
+// --------------------------------------------------
 
 async function addVariant(productId) {
     const button = document.querySelector(`[data-add-variant="${productId}"]`);
     const element = button?.closest(".variant");
 
     if (!element) return;
+
+    const product = products.find(item => item.id === productId);
+    const category = getCategory(product?.category_id);
+    const schema = safeJSON(category?.attributes_schema);
 
     const attributes = {};
 
@@ -1030,8 +1122,14 @@ async function addVariant(productId) {
         }
     });
 
-    const priceValue = element.querySelector("[data-new-price]").value;
+    for (const field of schema) {
+        if (field.required && !attributes[field.key]) {
+            notify(`Заполни обязательное поле «${field.label}».`, true);
+            return;
+        }
+    }
 
+    const priceValue = element.querySelector("[data-new-price]").value;
     const price = priceValue === "" ? null : Number(priceValue);
 
     if (price !== null && (!Number.isFinite(price) || price < 0)) {
@@ -1058,8 +1156,13 @@ async function addVariant(productId) {
     }
 
     notify("Конфигурация добавлена.");
+
     await loadProducts();
 }
+
+// --------------------------------------------------
+// УДАЛЕНИЕ КОНФИГУРАЦИИ
+// --------------------------------------------------
 
 async function deleteVariant(id) {
     if (!confirm("Удалить эту конфигурацию?")) return;
@@ -1075,21 +1178,33 @@ async function deleteVariant(id) {
     }
 
     notify("Конфигурация удалена.");
+
     await loadProducts();
 }
+
+// --------------------------------------------------
+// УДАЛЕНИЕ ТОВАРА
+// --------------------------------------------------
 
 async function deleteProduct(id) {
     const product = products.find(item => item.id === id);
     if (!product) return;
 
-    if (!confirm(`Удалить товар «${product.name}» и все его конфигурации?`)) {
+    if (!confirm(
+        `Удалить товар «${product.name}» и все его конфигурации?`
+    )) {
         return;
     }
 
-    const { data: images } = await db
+    const { data: images, error: imagesError } = await db
         .from("product_images")
         .select("image_url")
         .eq("product_id", id);
+
+    if (imagesError) {
+        notify("Не удалось получить фотографии товара.", true);
+        return;
+    }
 
     const { error } = await db
         .from("products")
@@ -1108,6 +1223,7 @@ async function deleteProduct(id) {
     }
 
     notify("Товар удалён.");
+
     await loadProducts();
 }
 
@@ -1116,3 +1232,4 @@ async function deleteProduct(id) {
 // --------------------------------------------------
 
 checkAdmin();
+
