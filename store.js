@@ -3,9 +3,9 @@ const storeDB = supabaseClient;
 
 let storeProducts = [];
 let storeCategories = [];
+let storeVariants = [];
 let selectedProduct = null;
 let selectedVariant = null;
-let storeVariants = [];
 let currentAttributeFields = [];
 let currentCategoryId = null;
 
@@ -85,7 +85,6 @@ function getVariantAttributes(variant) {
 
   const result = { ...attributes };
 
-  // Совместимость со старыми конфигурациями
   ["memory", "color", "sim_type"].forEach(key => {
     if (!hasValue(result[key]) && hasValue(variant[key])) {
       result[key] = variant[key];
@@ -95,8 +94,8 @@ function getVariantAttributes(variant) {
   return result;
 }
 
-// Настройки характеристик категории
-function getCategorySchema(category, variants) {
+// Получаем настройки категории
+function getCategorySchema(category) {
   let schema = category?.attributes_schema || [];
 
   if (typeof schema === "string") {
@@ -107,25 +106,63 @@ function getCategorySchema(category, variants) {
     }
   }
 
-  if (Array.isArray(schema) && schema.length) {
-    return schema
-      .filter(field => field && field.key)
-      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-  }
+  if (!Array.isArray(schema)) return [];
 
-  // Резервный вариант для старых категорий
-  return [
-    { key: "memory", label: "Память" },
-    { key: "color", label: "Цвет" },
-    { key: "sim_type", label: "Тип SIM" }
-  ].filter(field =>
-    variants.some(variant =>
-      hasValue(getVariantAttributes(variant)[field.key])
-    )
-  );
+  return schema
+    .filter(field => field && field.key)
+    .sort((a, b) =>
+      (a.sort_order || 0) - (b.sort_order || 0)
+    );
 }
 
-// Контейнер для характеристик
+// Получаем варианты значений из админки
+function getSchemaOptions(field) {
+  let options = field.options || [];
+
+  if (typeof options === "string") {
+    options = options.split(",");
+  }
+
+  if (!Array.isArray(options)) return [];
+
+  return options
+    .map(option => {
+      if (typeof option === "object" && option !== null) {
+        return option.value ?? option.label ?? "";
+      }
+      return option;
+    })
+    .map(option => String(option).trim())
+    .filter(Boolean);
+}
+
+// Объединяем значения из категории и товара
+function getFieldOptions(field, variants) {
+  const result = new Map();
+
+  // Сначала значения из настроек категории
+  getSchemaOptions(field).forEach(value => {
+    result.set(normalizeValue(value), value);
+  });
+
+  // Затем реальные значения конфигураций товара
+  variants.forEach(variant => {
+    const attributes = getVariantAttributes(variant);
+    const value = attributes[field.key];
+
+    if (hasValue(value)) {
+      const normalized = normalizeValue(value);
+
+      if (!result.has(normalized)) {
+        result.set(normalized, String(value).trim());
+      }
+    }
+  });
+
+  return [...result.values()];
+}
+
+// Контейнер характеристик
 function prepareAttributeContainer() {
   const modal = document.getElementById("productModal");
   if (!modal) return null;
@@ -133,7 +170,6 @@ function prepareAttributeContainer() {
   const content = modal.querySelector(".modal-content");
   if (!content) return null;
 
-  // Убираем прежние статические поля
   ["modalMemory", "modalColor", "modalSim"].forEach(id => {
     const element = document.getElementById(id);
 
@@ -222,7 +258,7 @@ async function loadStore() {
   }
 }
 
-// Категории
+// Отображение категорий
 function renderCategories() {
   categoryMenu.innerHTML = storeCategories.map(category => `
     <button
@@ -236,7 +272,7 @@ function renderCategories() {
   `).join("");
 }
 
-// Товары категории
+// Отображение товаров
 function renderProducts(categoryId, button) {
   currentCategoryId = categoryId;
 
@@ -348,66 +384,31 @@ function openStoreProduct(id) {
     item => item.id === selectedProduct.category_id
   );
 
-  const schema = getCategorySchema(category, variants);
+  // Берём ВСЕ характеристики из настроек категории.
+  // Не скрываем поля, даже если варианты товара заполнены не полностью.
+  currentAttributeFields = getCategorySchema(category);
 
   const container = prepareAttributeContainer();
 
   if (!container) return;
 
   container.innerHTML = "";
-  currentAttributeFields = [];
 
-  // Показываем только поля, заполненные
-  // во всех доступных конфигурациях товара.
-  const completeFields = schema.filter(field =>
-    variants.every(variant =>
-      hasValue(getVariantAttributes(variant)[field.key])
-    )
-  );
-
-  currentAttributeFields = completeFields;
-
-  // Если некоторые поля категории не заполнены
-  // в конфигурациях, не показываем их покупателю.
-  const hiddenFieldsCount = schema.length - completeFields.length;
-
-  if (hiddenFieldsCount > 0) {
-    container.insertAdjacentHTML("beforeend", `
-      <p style="font-size:12px;color:#888;margin-bottom:12px">
-        Некоторые характеристики этой модели пока не настроены.
+  if (!currentAttributeFields.length) {
+    container.innerHTML = `
+      <p style="color:#888">
+        Для этой категории пока не настроены характеристики.
       </p>
-    `);
+    `;
   }
 
-  // Выбираем первую реальную конфигурацию
-  const initialVariant = variants.find(variant =>
-    completeFields.every(field =>
-      hasValue(getVariantAttributes(variant)[field.key])
-    )
-  ) || variants[0];
-
+  // Начальная конфигурация
+  const initialVariant = variants[0];
   const initialAttributes = getVariantAttributes(initialVariant);
 
-  // Создаём поля только с реальными значениями вариантов
-  completeFields.forEach(field => {
+  currentAttributeFields.forEach(field => {
     const key = field.key;
-    const valuesMap = new Map();
-
-    variants.forEach(variant => {
-      const value = getVariantAttributes(variant)[key];
-
-      if (hasValue(value)) {
-        const normalized = normalizeValue(value);
-
-        if (!valuesMap.has(normalized)) {
-          valuesMap.set(normalized, String(value).trim());
-        }
-      }
-    });
-
-    const options = [...valuesMap.values()];
-
-    if (!options.length) return;
+    const options = getFieldOptions(field, variants);
 
     const wrapper = document.createElement("div");
     wrapper.className = "modal-attribute";
@@ -415,51 +416,71 @@ function openStoreProduct(id) {
     const label = document.createElement("label");
     label.textContent = field.label || key;
 
-    const select = document.createElement("select");
-    select.dataset.attributeKey = key;
-
-    const initialValue = String(
-      initialAttributes[key] ?? options[0]
-    ).trim();
-
-    select.innerHTML = options.map(value => `
-      <option value="${safeText(value)}"
-        ${
-          normalizeValue(value) === normalizeValue(initialValue)
-            ? "selected"
-            : ""
-        }>
-        ${safeText(value)}
-      </option>
-    `).join("");
-
-    select.addEventListener("change", updateStoreVariant);
-
     wrapper.appendChild(label);
-    wrapper.appendChild(select);
+
+    if (options.length) {
+      const select = document.createElement("select");
+      select.dataset.attributeKey = key;
+
+      const initialValue = initialAttributes[key];
+
+      // Если первая конфигурация не заполнена,
+      // выбираем первое значение из настроек категории.
+      const selectedValue = hasValue(initialValue)
+        ? String(initialValue)
+        : options[0];
+
+      select.innerHTML = options.map(value => `
+        <option value="${safeText(value)}"
+          ${
+            normalizeValue(value) === normalizeValue(selectedValue)
+              ? "selected"
+              : ""
+          }>
+          ${safeText(value)}
+        </option>
+      `).join("");
+
+      select.addEventListener("change", updateStoreVariant);
+
+      wrapper.appendChild(select);
+
+    } else {
+      const input = document.createElement("input");
+
+      input.type = "text";
+      input.dataset.attributeKey = key;
+      input.placeholder = "Значение пока не добавлено";
+      input.value = initialAttributes[key] || "";
+
+      input.addEventListener("input", updateStoreVariant);
+
+      wrapper.appendChild(input);
+    }
+
     container.appendChild(wrapper);
   });
 
   updateStoreVariant();
 }
 
-// Получаем выбранные покупателем параметры
+// Читаем все выбранные характеристики
 function getSelectedAttributes() {
   const container = document.getElementById("modalAttributes");
 
   if (!container) return {};
 
-  const result = {};
+  const attributes = {};
 
-  container.querySelectorAll("select[data-attribute-key]")
-    .forEach(select => {
-      result[select.dataset.attributeKey] = select.value;
+  container.querySelectorAll("[data-attribute-key]")
+    .forEach(element => {
+      attributes[element.dataset.attributeKey] = element.value;
     });
 
-  return result;
+  return attributes;
 }
 
-// Ищем точную конфигурацию
+// Находим соответствующую конфигурацию
 function updateStoreVariant() {
   const container = document.getElementById("modalAttributes");
   const priceElement = document.getElementById("modalPrice");
@@ -476,7 +497,8 @@ function updateStoreVariant() {
     return currentAttributeFields.every(field => {
       const key = field.key;
 
-      return normalizeValue(variantAttributes[key]) ===
+      return hasValue(selectedAttributes[key]) &&
+        normalizeValue(variantAttributes[key]) ===
         normalizeValue(selectedAttributes[key]);
     });
   }) || null;
@@ -487,7 +509,7 @@ function updateStoreVariant() {
           selectedVariant.price,
           selectedVariant.currency || "RUB"
         )
-      : "Такая комбинация недоступна";
+      : "Такая конфигурация пока недоступна";
   }
 
   if (orderButton) {
@@ -495,12 +517,12 @@ function updateStoreVariant() {
   }
 }
 
-// Закрываем окно
+// Закрытие окна
 function closeStoreProduct() {
   document.getElementById("productModal")?.classList.add("hidden");
 }
 
-// Отправляем заказ
+// Отправка заказа
 async function submitStoreOrder() {
   if (!selectedProduct || !selectedVariant) {
     alert("Сначала выберите доступную конфигурацию.");
@@ -517,16 +539,12 @@ async function submitStoreOrder() {
 
   const message = {
     product: selectedProduct.name,
-
     memory: attributes.memory || "—",
     color: attributes.color || "—",
     sim: attributes.sim_type || "—",
-
     attributes: attributes,
-
     price: selectedVariant.price,
     currency: selectedVariant.currency || "RUB",
-
     customer: customer.trim(),
     contact: contact.trim()
   };
@@ -550,9 +568,7 @@ async function submitStoreOrder() {
   } catch (error) {
     console.error("Order error:", error);
 
-    alert(
-      "Не удалось отправить заявку. Попробуйте ещё раз."
-    );
+    alert("Не удалось отправить заявку. Попробуйте ещё раз.");
   }
 }
 
@@ -564,4 +580,3 @@ window.closeStoreProduct = closeStoreProduct;
 window.submitStoreOrder = submitStoreOrder;
 
 loadStore();
-
