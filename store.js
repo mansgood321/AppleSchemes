@@ -22,6 +22,19 @@ function safeText(value) {
   })[c]);
 }
 
+function normalizeValue(value) {
+  return String(value ?? "")
+    .trim()
+    .normalize("NFKC")
+    .toLocaleLowerCase("ru");
+}
+
+function hasValue(value) {
+  return value !== null &&
+    value !== undefined &&
+    String(value).trim() !== "";
+}
+
 function formatPrice(price, currency = "RUB") {
   if (price === null || price === undefined || price === "") {
     return "Цена уточняется";
@@ -37,7 +50,24 @@ function formatPrice(price, currency = "RUB") {
     " " + (symbols[currency] || currency);
 }
 
-// Получаем характеристики конкретной конфигурации
+function isAvailable(variant) {
+  const status = normalizeValue(variant.availability);
+
+  return ![
+    "out_of_stock",
+    "out-of-stock",
+    "sold_out",
+    "нет в наличии"
+  ].includes(status);
+}
+
+function getAvailableVariants(productId) {
+  return storeVariants.filter(variant =>
+    variant.product_id === productId && isAvailable(variant)
+  );
+}
+
+// Получаем характеристики конфигурации
 function getVariantAttributes(variant) {
   let attributes = variant.attributes || {};
 
@@ -49,15 +79,23 @@ function getVariantAttributes(variant) {
     }
   }
 
-  return {
-    ...attributes,
-    memory: attributes.memory ?? variant.memory ?? "",
-    color: attributes.color ?? variant.color ?? "",
-    sim_type: attributes.sim_type ?? variant.sim_type ?? ""
-  };
+  if (!attributes || typeof attributes !== "object") {
+    attributes = {};
+  }
+
+  const result = { ...attributes };
+
+  // Совместимость со старыми конфигурациями
+  ["memory", "color", "sim_type"].forEach(key => {
+    if (!hasValue(result[key]) && hasValue(variant[key])) {
+      result[key] = variant[key];
+    }
+  });
+
+  return result;
 }
 
-// Получаем настройки характеристик категории
+// Настройки характеристик категории
 function getCategorySchema(category, variants) {
   let schema = category?.attributes_schema || [];
 
@@ -75,21 +113,19 @@ function getCategorySchema(category, variants) {
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }
 
-  // Совместимость со старыми товарами
-  const legacyFields = [
+  // Резервный вариант для старых категорий
+  return [
     { key: "memory", label: "Память" },
     { key: "color", label: "Цвет" },
     { key: "sim_type", label: "Тип SIM" }
-  ];
-
-  return legacyFields.filter(field =>
+  ].filter(field =>
     variants.some(variant =>
-      getVariantAttributes(variant)[field.key]
+      hasValue(getVariantAttributes(variant)[field.key])
     )
   );
 }
 
-// Создаём контейнер характеристик
+// Контейнер для характеристик
 function prepareAttributeContainer() {
   const modal = document.getElementById("productModal");
   if (!modal) return null;
@@ -97,7 +133,7 @@ function prepareAttributeContainer() {
   const content = modal.querySelector(".modal-content");
   if (!content) return null;
 
-  // Удаляем старые жёстко заданные поля
+  // Убираем прежние статические поля
   ["modalMemory", "modalColor", "modalSim"].forEach(id => {
     const element = document.getElementById(id);
 
@@ -126,7 +162,7 @@ function prepareAttributeContainer() {
   return container;
 }
 
-// Загрузка каталога
+// Загружаем каталог
 async function loadStore() {
   if (!categoryMenu || !productList) {
     console.error("Не найдены элементы каталога");
@@ -177,16 +213,16 @@ async function loadStore() {
     console.error("Store loading error:", error);
 
     productList.innerHTML = `
-      <div style="padding:20px;background:#fff0f0;border-radius:15px">
-        <b>Не удалось загрузить каталог</b>
+      <div class="loading-state">
+        Не удалось загрузить каталог.
         <p>${safeText(error.message)}</p>
-        <button onclick="loadStore()">Повторить загрузку</button>
+        <button onclick="loadStore()">Повторить</button>
       </div>
     `;
   }
 }
 
-// Отображение категорий
+// Категории
 function renderCategories() {
   categoryMenu.innerHTML = storeCategories.map(category => `
     <button
@@ -200,7 +236,7 @@ function renderCategories() {
   `).join("");
 }
 
-// Отображение товаров
+// Товары категории
 function renderProducts(categoryId, button) {
   currentCategoryId = categoryId;
 
@@ -210,8 +246,11 @@ function renderProducts(categoryId, button) {
   if (button) {
     button.classList.add("active");
   } else {
-    const activeButton = [...document.querySelectorAll(".category-button")]
-      .find(item => item.getAttribute("onclick")?.includes(categoryId));
+    const activeButton = [
+      ...document.querySelectorAll(".category-button")
+    ].find(item =>
+      item.getAttribute("onclick")?.includes(categoryId)
+    );
 
     activeButton?.classList.add("active");
   }
@@ -230,41 +269,33 @@ function renderProducts(categoryId, button) {
   }
 
   productList.innerHTML = products.map(product => {
-    const variants = storeVariants.filter(
-      variant =>
-        variant.product_id === product.id &&
-        variant.availability !== "out_of_stock"
-    );
-
-    const availablePrices = variants.filter(
-      variant => variant.price !== null
-    );
+    const variants = getAvailableVariants(product.id);
+    const pricedVariants = variants.filter(v => v.price !== null);
 
     let priceText = "Цена уточняется";
 
-    if (availablePrices.length) {
-      const currency = availablePrices[0].currency || "RUB";
+    if (pricedVariants.length) {
+      const currency = pricedVariants[0].currency || "RUB";
 
-      const sameCurrencyPrices = availablePrices
+      const prices = pricedVariants
         .filter(v => (v.currency || "RUB") === currency)
         .map(v => Number(v.price));
 
-      if (sameCurrencyPrices.length) {
-        priceText = "от " + formatPrice(
-          Math.min(...sameCurrencyPrices),
-          currency
-        );
+      if (prices.length) {
+        priceText = "от " +
+          formatPrice(Math.min(...prices), currency);
       }
     }
 
     return `
       <article class="store-card">
-
         <div class="store-photo">
-          ${product.image_url
-            ? `<img src="${safeText(product.image_url)}"
-                    alt="${safeText(product.name)}">`
-            : "🍏"}
+          ${
+            product.image_url
+              ? `<img src="${safeText(product.image_url)}"
+                      alt="${safeText(product.name)}">`
+              : "🍏"
+          }
         </div>
 
         <h3>${safeText(product.name)}</h3>
@@ -273,33 +304,26 @@ function renderProducts(categoryId, button) {
           ${safeText(product.description || "Выберите конфигурацию")}
         </p>
 
-        <div class="store-price">
-          ${priceText}
-        </div>
+        <div class="store-price">${priceText}</div>
 
         <button onclick="openStoreProduct('${product.id}')">
           Выбрать модель
         </button>
-
       </article>
     `;
   }).join("");
 }
 
-// Открытие товара
+// Открываем товар
 function openStoreProduct(id) {
   selectedProduct = storeProducts.find(product => product.id === id);
 
   if (!selectedProduct) return;
 
-  const variants = storeVariants.filter(
-    variant =>
-      variant.product_id === id &&
-      variant.availability !== "out_of_stock"
-  );
+  const variants = getAvailableVariants(id);
 
   if (!variants.length) {
-    alert("Нет доступных конфигураций.");
+    alert("У этого товара пока нет доступных конфигураций.");
     return;
   }
 
@@ -324,61 +348,94 @@ function openStoreProduct(id) {
     item => item.id === selectedProduct.category_id
   );
 
-  currentAttributeFields = getCategorySchema(category, variants);
+  const schema = getCategorySchema(category, variants);
 
   const container = prepareAttributeContainer();
 
   if (!container) return;
 
   container.innerHTML = "";
+  currentAttributeFields = [];
 
-  const firstVariantAttributes = getVariantAttributes(variants[0]);
+  // Показываем только поля, заполненные
+  // во всех доступных конфигурациях товара.
+  const completeFields = schema.filter(field =>
+    variants.every(variant =>
+      hasValue(getVariantAttributes(variant)[field.key])
+    )
+  );
 
-  currentAttributeFields.forEach(field => {
+  currentAttributeFields = completeFields;
+
+  // Если некоторые поля категории не заполнены
+  // в конфигурациях, не показываем их покупателю.
+  const hiddenFieldsCount = schema.length - completeFields.length;
+
+  if (hiddenFieldsCount > 0) {
+    container.insertAdjacentHTML("beforeend", `
+      <p style="font-size:12px;color:#888;margin-bottom:12px">
+        Некоторые характеристики этой модели пока не настроены.
+      </p>
+    `);
+  }
+
+  // Выбираем первую реальную конфигурацию
+  const initialVariant = variants.find(variant =>
+    completeFields.every(field =>
+      hasValue(getVariantAttributes(variant)[field.key])
+    )
+  ) || variants[0];
+
+  const initialAttributes = getVariantAttributes(initialVariant);
+
+  // Создаём поля только с реальными значениями вариантов
+  completeFields.forEach(field => {
     const key = field.key;
-    const label = field.label || key;
+    const valuesMap = new Map();
 
-    const values = [
-      ...new Set(
-        variants
-          .map(variant => getVariantAttributes(variant)[key])
-          .filter(value => value !== null &&
-            value !== undefined &&
-            String(value).trim() !== "")
-          .map(value => String(value))
-      )
-    ];
+    variants.forEach(variant => {
+      const value = getVariantAttributes(variant)[key];
 
-    // Если значений нет в вариантах, используем настройки категории
-    const options = values.length
-      ? values
-      : (Array.isArray(field.options) ? field.options : []);
+      if (hasValue(value)) {
+        const normalized = normalizeValue(value);
+
+        if (!valuesMap.has(normalized)) {
+          valuesMap.set(normalized, String(value).trim());
+        }
+      }
+    });
+
+    const options = [...valuesMap.values()];
 
     if (!options.length) return;
-
-    const initialValue = String(
-      firstVariantAttributes[key] ?? options[0]
-    );
 
     const wrapper = document.createElement("div");
     wrapper.className = "modal-attribute";
 
-    const fieldLabel = document.createElement("label");
-    fieldLabel.textContent = label;
+    const label = document.createElement("label");
+    label.textContent = field.label || key;
 
     const select = document.createElement("select");
     select.dataset.attributeKey = key;
 
+    const initialValue = String(
+      initialAttributes[key] ?? options[0]
+    ).trim();
+
     select.innerHTML = options.map(value => `
       <option value="${safeText(value)}"
-        ${String(value) === initialValue ? "selected" : ""}>
+        ${
+          normalizeValue(value) === normalizeValue(initialValue)
+            ? "selected"
+            : ""
+        }>
         ${safeText(value)}
       </option>
     `).join("");
 
     select.addEventListener("change", updateStoreVariant);
 
-    wrapper.appendChild(fieldLabel);
+    wrapper.appendChild(label);
     wrapper.appendChild(select);
     container.appendChild(wrapper);
   });
@@ -386,51 +443,49 @@ function openStoreProduct(id) {
   updateStoreVariant();
 }
 
-// Читаем выбранные покупателем характеристики
+// Получаем выбранные покупателем параметры
 function getSelectedAttributes() {
   const container = document.getElementById("modalAttributes");
 
   if (!container) return {};
 
-  const attributes = {};
+  const result = {};
 
   container.querySelectorAll("select[data-attribute-key]")
     .forEach(select => {
-      attributes[select.dataset.attributeKey] = select.value;
+      result[select.dataset.attributeKey] = select.value;
     });
 
-  return attributes;
+  return result;
 }
 
-// Обновление цены и выбранной конфигурации
+// Ищем точную конфигурацию
 function updateStoreVariant() {
   const container = document.getElementById("modalAttributes");
   const priceElement = document.getElementById("modalPrice");
   const orderButton = document.getElementById("modalOrder");
 
-  if (!container) return;
+  if (!container || !selectedProduct) return;
 
-  const attributes = getSelectedAttributes();
-
-  const variants = storeVariants.filter(
-    variant =>
-      variant.product_id === selectedProduct?.id &&
-      variant.availability !== "out_of_stock"
-  );
+  const selectedAttributes = getSelectedAttributes();
+  const variants = getAvailableVariants(selectedProduct.id);
 
   selectedVariant = variants.find(variant => {
     const variantAttributes = getVariantAttributes(variant);
 
-    return Object.entries(attributes).every(([key, value]) =>
-      String(variantAttributes[key] ?? "") === String(value)
-    );
+    return currentAttributeFields.every(field => {
+      const key = field.key;
+
+      return normalizeValue(variantAttributes[key]) ===
+        normalizeValue(selectedAttributes[key]);
+    });
   }) || null;
 
   if (priceElement) {
     priceElement.textContent = selectedVariant
       ? formatPrice(
           selectedVariant.price,
-          selectedVariant.currency
+          selectedVariant.currency || "RUB"
         )
       : "Такая комбинация недоступна";
   }
@@ -440,15 +495,15 @@ function updateStoreVariant() {
   }
 }
 
-// Закрытие окна товара
+// Закрываем окно
 function closeStoreProduct() {
   document.getElementById("productModal")?.classList.add("hidden");
 }
 
-// Отправка заявки через Telegram-бота
+// Отправляем заказ
 async function submitStoreOrder() {
   if (!selectedProduct || !selectedVariant) {
-    alert("Сначала выберите товар и конфигурацию");
+    alert("Сначала выберите доступную конфигурацию.");
     return;
   }
 
@@ -463,12 +518,10 @@ async function submitStoreOrder() {
   const message = {
     product: selectedProduct.name,
 
-    // Старые поля сохраняем для совместимости
     memory: attributes.memory || "—",
     color: attributes.color || "—",
     sim: attributes.sim_type || "—",
 
-    // Новые динамические характеристики
     attributes: attributes,
 
     price: selectedVariant.price,
@@ -490,9 +543,7 @@ async function submitStoreOrder() {
       throw new Error("Заявка не отправлена");
     }
 
-    alert(
-      "✅ Заявка успешно отправлена! Менеджер скоро свяжется с вами."
-    );
+    alert("✅ Заявка успешно отправлена!");
 
     closeStoreProduct();
 
@@ -505,7 +556,6 @@ async function submitStoreOrder() {
   }
 }
 
-// Делаем функции доступными HTML-кнопкам
 window.loadStore = loadStore;
 window.renderProducts = renderProducts;
 window.openStoreProduct = openStoreProduct;
@@ -513,5 +563,5 @@ window.updateStoreVariant = updateStoreVariant;
 window.closeStoreProduct = closeStoreProduct;
 window.submitStoreOrder = submitStoreOrder;
 
-// Запуск каталога
 loadStore();
+
