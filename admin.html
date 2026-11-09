@@ -246,6 +246,32 @@ hr{
   .row{flex-direction:column;align-items:stretch}
   .row>*{width:100%}
 }
+
+
+/* AppleSchemes admin usability refresh - no database changes */
+:root{--bg:#f7f8fa;--surface:#fff;--line:#e7e9ee;--text:#18202b;--muted:#697381;--accent:#425c7e;--dark:#202833;--radius:20px}
+body{background:radial-gradient(circle at 90% 0%,#edf1f7,transparent 33%),var(--bg)}
+header{padding:16px max(18px,calc((100vw - 1180px)/2));box-shadow:0 2px 20px #1c2b3d08}
+main{max-width:1180px}h1{font-size:clamp(26px,4vw,36px)}
+.card{box-shadow:0 8px 30px #24324608;border-radius:22px}
+.tab-button{background:#eff1f5;color:#425064}.tab-button.active{background:var(--dark)}
+button{transition:background .18s,transform .18s}button:hover:not(:disabled){transform:translateY(-1px)}
+.product,.category-item{border:1px solid var(--line);border-radius:17px;box-shadow:0 3px 12px #22304406}
+.product>div:first-child{display:flex;align-items:center;gap:14px}
+.product .preview-image{height:85px;width:85px;flex:none;object-fit:contain}
+.product>details>summary,.config-editor>summary{padding:13px;border-radius:10px;background:#f5f7fa;margin:8px 0}
+.config-editor{border:0;padding:0}
+.config-editor[open]{border:1px solid var(--line);padding:16px;border-radius:16px;background:#fcfdff}
+.field-builder{background:#f2f5f9;border:1px solid #e5ebf4;border-radius:14px;padding:15px;margin:12px 0 22px}
+.field-builder h4{margin:0 0 8px}.attribute-chips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+.attribute-chip{font-size:12px;background:#fff;padding:6px 11px;border:1px solid #dde5ef;border-radius:30px}
+.field-builder .row>*{min-width:130px}.field-builder .row button{flex:0 0 auto}
+.variant{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 14px;background:#fff;border:1px solid var(--line);padding:18px}
+.variant>strong{grid-column:1/-1}.variant>label{align-self:end;margin:7px 0 0}
+.variant>input,.variant>select{margin:0 0 8px}.variant>button{margin-top:8px}
+input,select,textarea{background:#fff;border-color:#dfe4ea}input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #425c7e1a}
+@media(max-width:760px){.variant{grid-template-columns:1fr 1fr}.field-builder .row{flex-direction:column}.field-builder .row>*{width:100%}header{padding:14px 18px}}
+@media(max-width:460px){.variant{display:flex;flex-direction:column;gap:4px}.variant>label{align-self:stretch}.variant>button{width:100%}.product{padding:12px}.config-editor[open]{padding:10px}}
 </style>
 </head>
 
@@ -290,7 +316,8 @@ hr{
   </div>
 
   <!-- НАВИГАЦИЯ -->
-  <nav class="tabs">
+  <p class="small">Каталог → категория → модель → характеристики и индивидуальные цены</p>
+  <nav class="tabs" aria-label="Разделы управления">
     <button class="tab-button active" data-tab="categories">Категории</button>
     <button class="tab-button" data-tab="products">Товары</button>
     <button class="tab-button" data-tab="pricing">Цены и история</button>
@@ -390,29 +417,18 @@ hr{
   <section id="tab-pricing" class="tab-panel">
 
     <div class="card">
-      <h2>📊 Управление прайсом Excel</h2>
-      <p class="section-description">
-        Экспортируй прайс, обновляй цены и загружай изменения обратно в магазин.
-      </p>
-
-      <button type="button" onclick="ExcelManager.exportExcel()">
-        ↓ Скачать прайс Excel
-      </button>
-
-      <label>Выбрать обновлённый Excel-файл</label>
-      <input type="file" id="excelFile" accept=".xlsx,.xls">
-
-      <button type="button" onclick="
-        const file=document.getElementById('excelFile').files[0];
-        if(!file){
-          alert('Сначала выбери Excel-файл');
-        }else{
-          ExcelManager.importExcel(file)
-            .catch(error=>alert(error.message));
-        }
-      ">
-        ↑ Загрузить и обновить цены
-      </button>
+      <h2>📊 Каталог через Excel</h2>
+      <p class="section-description">Скачайте шаблон AppleSchemes_Import.xlsx, заполните модели и конфигурации. Сначала проверьте файл, затем подтвердите изменения. Обновления применяются одной транзакцией Supabase.</p>
+      <button type="button" class="secondary" onclick="ExcelManager.exportExcel()">↓ Выгрузить текущий каталог</button>
+      <label for="excelFile">Excel-файл (.xlsx)</label>
+      <input type="file" id="excelFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+      <button type="button" id="previewExcelImport" onclick="ExcelManager.previewExcel(document.getElementById('excelFile').files[0])">Проверить Excel</button>
+      <div class="import-preview" id="importPreview" aria-live="polite">Выберите XLSX для проверки.</div>
+      <div class="import-actions">
+        <button type="button" id="confirmExcelImport" disabled onclick="ExcelManager.applyExcel()">Применить изменения</button>
+        <button type="button" class="secondary" id="cancelExcelImport" hidden onclick="ExcelManager.clearPreview();document.getElementById('importMessage').textContent='Импорт отменён. Ничего не изменено.'">Отменить</button>
+      </div>
+      <div id="importMessage" class="import-message" role="status" aria-live="polite"></div>
     </div>
 
     <div class="card">
@@ -441,6 +457,10 @@ hr{
 <script src="./history.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="./excel.js"></script>
+<style>
+.import-preview{padding:16px;background:#f6f5f2;border:1px solid #eceae5;border-radius:13px;margin:14px 0;line-height:1.6} .import-actions{display:flex;gap:10px;flex-wrap:wrap}.import-actions button{width:auto}.import-message{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:12px;color:#176b42;line-height:1.5}.import-message.error{color:#b33030}button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:600px){.import-actions button{width:100%}.card{padding:16px}}
+</style>
+<script>document.getElementById("excelFile")?.addEventListener("change",()=>ExcelManager.clearPreview());</script>
 
 <script>
 // Переключение разделов админки

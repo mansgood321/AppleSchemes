@@ -7,6 +7,45 @@ let categories = [];
 let products = [];
 let variants = [];
 let editingCategoryId = null;
+// Draft definitions are local to the editor until used in a saved variant.
+// Supabase has no product-level attribute-definition column.
+const productDraftFields = new Map();
+const ATTRIBUTE_NAMES = {memory:'Память',color:'Цвет',sim_type:'Тип SIM',screen_size:'Диагональ',chip:'Процессор',ram:'ОЗУ',storage:'Накопитель',case_size:'Размер корпуса',band:'Ремешок'};
+function productFields(product) {
+    const category = getCategory(product.category_id);
+    const configured = safeJSON(category?.attributes_schema);
+    const used = new Map();
+    const currentVariants = variants.filter(v => v.product_id === product.id);
+    // Once variants exist, keep only fields used by THIS model, not every field
+    // defined for the whole category. New models start from category defaults.
+    for (const field of configured) if (field?.key && (!currentVariants.length || currentVariants.some(v => String(getAttributes(v)[field.key] ?? '').trim())))
+        used.set(field.key, {...field});
+    for (const variant of variants.filter(v => v.product_id === product.id)) {
+        for (const [key,value] of Object.entries(getAttributes(variant))) {
+            if (String(value ?? '').trim() && !used.has(key))
+                used.set(key, {key,label:ATTRIBUTE_NAMES[key] || key,type:'text',options:[]});
+        }
+    }
+    for (const field of productDraftFields.get(product.id) || []) used.set(field.key,field);
+    return [...used.values()];
+}
+function attributeInput(field, value, prefix) {
+    const key = escapeHTML(field.key), val = escapeHTML(value ?? '');
+    // Free typing is required: category options may not cover this product.
+    // datalist offers suggestions without constraining values.
+    const options = Array.isArray(field.options) ? field.options : [];
+    const listId = `${prefix}-${key.replace(/[^a-z0-9_]/gi,'')}`;
+    return `<label>${escapeHTML(field.label || field.key)}</label>
+      <input data-${prefix === 'new' ? 'new-attribute' : 'attribute'}="${key}" value="${val}" list="${listId}" placeholder="Введите значение">
+      <datalist id="${listId}">${options.map(o=>`<option value="${escapeHTML(o)}"></option>`).join('')}</datalist>`;
+}
+function attrSignature(attrs) {
+    return JSON.stringify(Object.entries(attrs).filter(([,v])=>String(v??'').trim()).map(([k,v])=>[k,String(v).trim().normalize('NFKC').toLowerCase()]).sort(([a],[b])=>a.localeCompare(b)));
+}
+function duplicateVariant(productId, attributes, excludeId=null) {
+    return variants.some(v => v.product_id === productId && v.id !== excludeId && attrSignature(getAttributes(v)) === attrSignature(attributes));
+}
+
 
 // --------------------------------------------------
 // ОБЩИЕ ФУНКЦИИ
@@ -49,7 +88,7 @@ function safeJSON(value) {
 }
 
 function getAttributes(variant) {
-    const attributes = variant.attributes || {};
+    const attributes = variant.attributes && typeof variant.attributes === "object" ? variant.attributes : {};
 
     return {
         ...attributes,
@@ -741,6 +780,7 @@ $("productForm")?.addEventListener("submit", async event => {
 function renderProducts() {
     const container = $("productsList");
     if (!container) return;
+    const expanded = new Set([...container.querySelectorAll('details[data-config-editor][open]')].map(el => el.dataset.configEditor));
 
     if (!products.length) {
         container.innerHTML = `
@@ -826,9 +866,17 @@ function renderProducts() {
                     </button>
                 </details>
 
-                <hr>
-
-                <h3>Конфигурации (${productVariants.length})</h3>
+                <details class="config-editor" data-config-editor="${product.id}">
+                  <summary>Характеристики и цены · ${productVariants.length} конфигураций</summary>
+                  <div class="field-builder">
+                    <h4>Характеристики этой модели</h4>
+                    <p class="small">Добавьте название и ключ характеристики. Поле появится в конфигурациях этой модели. Оно сохранится в Supabase после сохранения хотя бы одной конфигурации с заполненным значением.</p>
+                    <div class="attribute-chips">${productFields(product).map(f=>`<span class="attribute-chip">${escapeHTML(f.label||f.key)}</span>`).join('')}</div>
+                    <div class="row"><input data-field-label="${product.id}" placeholder="Например, Цвет" aria-label="Название характеристики">
+                    <input data-field-key="${product.id}" placeholder="Например, color" aria-label="Ключ характеристики">
+                    <button type="button" data-add-product-field="${product.id}">Добавить поле</button></div>
+                  </div>
+                  <h3>Конфигурации (${productVariants.length})</h3>
 
                 ${productVariants.map(variant =>
                     renderVariant(product, variant)
@@ -839,6 +887,7 @@ function renderProducts() {
                     ${renderAddVariantForm(product)}
                 </details>
 
+                </details>
                 <hr>
 
                 <button type="button" class="danger"
@@ -849,6 +898,29 @@ function renderProducts() {
         `;
     }).join("");
 
+    container.querySelectorAll('details[data-config-editor]').forEach(el => {
+        if (expanded.has(el.dataset.configEditor)) el.open = true;
+    });
+    container.querySelectorAll("[data-add-product-field]").forEach(button => {
+        button.addEventListener("click", () => {
+            const id = button.dataset.addProductField;
+            const card = button.closest('[data-product]');
+            const key = card.querySelector('[data-field-key]').value.trim();
+            const label = card.querySelector('[data-field-label]').value.trim();
+            if (!/^[a-z][a-z0-9_]*$/.test(key) || !label) {
+                notify('Укажите название и ключ латиницей (например, memory или screen_size).',true);return;
+            }
+            const product = products.find(p=>p.id===id);
+            if (productFields(product).some(f=>f.key===key)) {
+                notify('Такая характеристика уже существует.',true);return;
+            }
+            productDraftFields.set(id,[...(productDraftFields.get(id)||[]),{key,label,type:'text',options:[]}]);
+            renderProducts();
+            const editor = document.querySelector(`[data-config-editor="${id}"]`);
+            if(editor){editor.open=true;editor.scrollIntoView({block:'nearest'});}
+            notify('Поле добавлено. Заполните его в конфигурации и сохраните конфигурацию.');
+        });
+    });
     container.querySelectorAll("[data-save-product]").forEach(button => {
         button.addEventListener("click", () =>
             saveProduct(button.dataset.saveProduct)
@@ -886,7 +958,7 @@ function renderProducts() {
 
 function renderVariant(product, variant) {
     const category = getCategory(product.category_id);
-    const schema = safeJSON(category?.attributes_schema);
+    const schema = productFields(product);
     const attributes = getAttributes(variant);
 
     return `
@@ -894,25 +966,7 @@ function renderVariant(product, variant) {
 
             <strong>Конфигурация</strong>
 
-            ${schema.map(field => `
-                <label>${escapeHTML(field.label)}</label>
-
-                ${field.type === "select" ? `
-                    <select data-attribute="${escapeHTML(field.key)}">
-                        <option value="">Не указано</option>
-
-                        ${(field.options || []).map(option => `
-                            <option value="${escapeHTML(option)}"
-                                ${attributes[field.key] === option ? "selected" : ""}>
-                                ${escapeHTML(option)}
-                            </option>
-                        `).join("")}
-                    </select>
-                ` : `
-                    <input data-attribute="${escapeHTML(field.key)}"
-                        value="${escapeHTML(attributes[field.key] || "")}">
-                `}
-            `).join("")}
+            ${schema.map(field => attributeInput(field, attributes[field.key] || "", "existing")).join("")}
 
             <label>Цена</label>
             <input data-variant-price type="number" min="0" step="0.01"
@@ -949,28 +1003,12 @@ function renderVariant(product, variant) {
 
 function renderAddVariantForm(product) {
     const category = getCategory(product.category_id);
-    const schema = safeJSON(category?.attributes_schema);
+    const schema = productFields(product);
 
     return `
         <div class="variant">
 
-            ${schema.map(field => `
-                <label>${escapeHTML(field.label)}</label>
-
-                ${field.type === "select" ? `
-                    <select data-new-attribute="${escapeHTML(field.key)}">
-                        <option value="">Выбери значение</option>
-
-                        ${(field.options || []).map(option => `
-                            <option value="${escapeHTML(option)}">
-                                ${escapeHTML(option)}
-                            </option>
-                        `).join("")}
-                    </select>
-                ` : `
-                    <input data-new-attribute="${escapeHTML(field.key)}">
-                `}
-            `).join("")}
+            ${schema.map(field => attributeInput(field, "", "new")).join("")}
 
             <label>Цена</label>
             <input data-new-price type="number" min="0" step="0.01">
@@ -1075,6 +1113,9 @@ async function saveVariant(id) {
         return;
     }
 
+    if (duplicateVariant(variant.product_id, attributes, id)) {
+        notify('Эта комбинация характеристик уже существует у товара.',true); return;
+    }
     const updates = {
         attributes,
         memory: attributes.memory || null,
@@ -1137,6 +1178,9 @@ async function addVariant(productId) {
         return;
     }
 
+    if (duplicateVariant(productId, attributes)) {
+        notify('Такая конфигурация уже существует. Откройте её и измените цену.',true);return;
+    }
     const { error } = await db
         .from("product_variants")
         .insert({

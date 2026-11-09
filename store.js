@@ -95,11 +95,16 @@
     );
 
     if (Array.isArray(schema) && schema.length) {
-      return schema
-        .filter(field => field && field.key)
-        .sort((a, b) =>
-          (a.sort_order || 0) - (b.sort_order || 0)
-        );
+      const configured = schema
+        .filter(field => field && field.key && categoryVariants.some(variant => hasValue(getVariantAttributes(variant)[field.key])))
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+      const keys = new Set(configured.map(field => field.key));
+      const extra = new Set();
+      categoryVariants.forEach(variant => Object.entries(getVariantAttributes(variant)).forEach(([key,value]) => {
+        if (hasValue(value) && !keys.has(key)) extra.add(key);
+      }));
+      const labels = {memory:'Память',color:'Цвет',sim_type:'Тип SIM',screen_size:'Диагональ',ram:'Оперативная память',storage:'Накопитель',chip:'Процессор',band:'Ремешок',case_size:'Корпус',connectivity:'Подключение'};
+      return [...configured,...[...extra].map(key => ({key,label:labels[key]||key}))];
     }
 
     const keys = new Set();
@@ -299,9 +304,7 @@
     selectedAttributes = {};
 
     const productVariants = variants.filter(
-      variant =>
-        variant.product_id === productId &&
-        isAvailable(variant)
+      variant => variant.product_id === productId
     );
 
     const category = categories.find(
@@ -356,7 +359,10 @@
 
       const options = [...values.values()];
 
-      if (!options.length) return "";
+      if (options.length <= 1) {
+        if (options.length === 1) selectedAttributes[field.key] = options[0];
+        return "";
+      }
 
       return `
         <div class="store-option-field">
@@ -422,42 +428,24 @@
           updateStoreVariant();
         });
       });
+    updateStoreVariant();
   }
 
   function findSelectedVariant() {
     if (!currentProduct) return null;
-
-    const productVariants = variants.filter(
-      variant =>
-        variant.product_id === currentProduct.id &&
-        isAvailable(variant)
-    );
-
-    const fields = getCategorySchema(
-      categories.find(
-        item => item.id === currentProduct.category_id
-      ),
-      productVariants
-    );
-
-    if (!fields.length) {
-      return productVariants[0] || null;
-    }
-
-    const allSelected = fields.every(field =>
-      hasValue(selectedAttributes[field.key])
-    );
-
-    if (!allSelected) return null;
-
-    return productVariants.find(variant => {
-      const attributes = getVariantAttributes(variant);
-
-      return fields.every(field =>
-        normalize(attributes[field.key]) ===
-        normalize(selectedAttributes[field.key])
-      );
-    }) || null;
+    const candidates = variants.filter(v => v.product_id === currentProduct.id);
+    const category = categories.find(c => c.id === currentProduct.category_id);
+    const fields = getCategorySchema(category, candidates);
+    // Compare every attribute of the stored variant. Never use a partial match
+    // or the price of the first variant when the combination is ambiguous.
+    if (fields.some(field => !hasValue(selectedAttributes[field.key]))) return null;
+    const matches = candidates.filter(variant => {
+      const stored = getVariantAttributes(variant);
+      const storedKeys = Object.keys(stored).filter(key => hasValue(stored[key]));
+      if (storedKeys.some(key => !fields.some(field => field.key === key))) return false;
+      return fields.every(field => normalize(stored[field.key]) === normalize(selectedAttributes[field.key]));
+    });
+    return matches.length === 1 ? matches[0] : null;
   }
 
   function updateStoreVariant() {
@@ -468,9 +456,11 @@
     const variant = findSelectedVariant();
 
     if (!variant) {
-      info.innerHTML = `
-        <p>Выберите все характеристики товара.</p>
-      `;
+      const fields = [...info.closest('.store-product-detail').querySelectorAll('[data-product-field]')];
+      const ready = fields.every(field => hasValue(field.value));
+      const productVariants = variants.filter(v => v.product_id === currentProduct?.id);
+      const missing = productVariants.length === 0;
+      info.innerHTML = `<p class="store-unavailable">${missing ? 'У модели пока нет конфигураций.' : ready ? 'Эта комбинация не продаётся или имеет неоднозначные данные. Выберите другие характеристики.' : 'Выберите характеристики, чтобы увидеть точную цену.'}</p>`;
       return;
     }
 
@@ -490,23 +480,21 @@
       </div>
 
       <div class="store-selected-price">
-        ${formatPrice(
-          variant.price,
-          variant.currency || "RUB"
-        )}
+        ${isAvailable(variant) && hasValue(variant.price) ? formatPrice(variant.price, variant.currency || "RUB") : "Цена недоступна"}
       </div>
 
       <div class="store-selected-status">
         ${
           normalize(variant.availability) === "preorder"
             ? "Предзаказ"
-            : "В наличии"
+            : normalize(variant.availability) === "on_order" ? "Под заказ"
+            : isAvailable(variant) ? "В наличии" : "Нет в наличии"
         }
       </div>
 
-      <button type="button" id="orderSelectedVariant">
-        Заказать
-      </button>
+      ${isAvailable(variant) && hasValue(variant.price)
+        ? `<button type="button" id="orderSelectedVariant">Заказать</button>`
+        : `<p class="store-unavailable">Нет в наличии — заказ сейчас недоступен.</p>`}
     `;
 
     document.getElementById("orderSelectedVariant")
@@ -544,6 +532,8 @@
 
     const message = {
       product: product.name,
+      model: product.model || product.name,
+      variant_id: variant.id,
 
       memory: attributes.memory || "—",
       color: attributes.color || "—",
