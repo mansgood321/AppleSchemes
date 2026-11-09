@@ -1,4 +1,3 @@
-
 (function () {
   const db = supabaseClient;
 
@@ -33,9 +32,12 @@
       String(value).trim() !== "";
   }
 
-  function parseJSON(value, fallback = []) {
+  function parseJSON(value, fallback = {}) {
     if (!value) return fallback;
-    if (typeof value === "object") return value;
+
+    if (typeof value === "object") {
+      return value;
+    }
 
     try {
       return JSON.parse(value);
@@ -45,7 +47,7 @@
   }
 
   function formatPrice(price, currency = "RUB") {
-    if (price === null || price === undefined || price === "") {
+    if (!hasValue(price)) {
       return "Цена уточняется";
     }
 
@@ -70,14 +72,11 @@
     ].includes(status);
   }
 
-  // Получаем характеристики конфигурации
   function getVariantAttributes(variant) {
     const attributes = parseJSON(variant.attributes, {});
 
     const result = {
-      ...(attributes && typeof attributes === "object"
-        ? attributes
-        : {})
+      ...attributes
     };
 
     ["memory", "color", "sim_type"].forEach(key => {
@@ -89,7 +88,6 @@
     return result;
   }
 
-  // Получаем схему характеристик категории
   function getCategorySchema(category, categoryVariants) {
     const schema = parseJSON(
       category?.attributes_schema,
@@ -127,15 +125,11 @@
     }));
   }
 
-  // Каталог
   async function loadStore() {
     const categoryMenu = document.getElementById("categoryMenu");
     const productList = document.getElementById("productList");
 
-    if (!categoryMenu || !productList) {
-      console.error("Не найдены categoryMenu или productList");
-      return;
-    }
+    if (!categoryMenu || !productList) return;
 
     productList.innerHTML = `
       <div class="category-empty-state">
@@ -190,13 +184,14 @@
         <div class="category-empty-state">
           Не удалось загрузить каталог.
           <p>${safeText(error.message)}</p>
-          <button onclick="loadStore()">Повторить</button>
+          <button type="button" onclick="loadStore()">
+            Повторить
+          </button>
         </div>
       `;
     }
   }
 
-  // Категории
   function renderCategories() {
     const categoryMenu = document.getElementById("categoryMenu");
 
@@ -221,7 +216,6 @@
       });
   }
 
-  // Открываем категорию и показываем модели
   function renderProducts(categoryId) {
     currentCategory = categoryId;
     currentProduct = null;
@@ -277,7 +271,8 @@
 
             <button
               type="button"
-              data-open-product="${safeText(product.id)}">
+              data-open-product="${safeText(product.id)}"
+            >
               Выбрать модель
             </button>
           </article>
@@ -293,7 +288,6 @@
       });
   }
 
-  // Открываем конкретную модель
   function openStoreProduct(productId) {
     const product = products.find(
       item => item.id === productId
@@ -322,7 +316,6 @@
     renderProductOptions(product, productVariants, fields);
   }
 
-  // Показываем характеристики модели
   function renderProductOptions(product, productVariants, fields) {
     const productList = document.getElementById("productList");
 
@@ -330,6 +323,7 @@
       productList.innerHTML = `
         <div class="category-empty-state">
           Сейчас нет доступных конфигураций этой модели.
+
           <button type="button" id="backToProducts">
             Назад к моделям
           </button>
@@ -370,6 +364,7 @@
 
           <select data-product-field="${safeText(field.key)}">
             <option value="">Выберите значение</option>
+
             ${options.map(value => `
               <option value="${safeText(value)}">
                 ${safeText(value)}
@@ -383,8 +378,11 @@
     productList.innerHTML = `
       <div class="store-product-detail">
 
-        <button type="button" class="store-back-button"
-                id="backToProducts">
+        <button
+          type="button"
+          class="store-back-button"
+          id="backToProducts"
+        >
           ← Назад к моделям
         </button>
 
@@ -426,7 +424,6 @@
       });
   }
 
-  // Ищем только точное совпадение конфигурации
   function findSelectedVariant() {
     if (!currentProduct) return null;
 
@@ -463,7 +460,6 @@
     }) || null;
   }
 
-  // Показываем цену выбранной конфигурации
   function updateStoreVariant() {
     const info = document.getElementById("selectedVariantInfo");
 
@@ -519,7 +515,6 @@
       });
   }
 
-  // Отправка заказа
   async function orderVariant(variantId) {
     const variant = variants.find(
       item => item.id === variantId
